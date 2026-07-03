@@ -43,9 +43,12 @@
   let uid = null;
   let progress = { watched: {}, tasks: {}, daily: {}, guarantee: {} };
   let reports = [];
+  let weeklyReports = [];
+  let submissions = [];
   let student = { name: "受講生", cohort: "1期", start_date: "2026-06-01", member_no: "", plan: D.student.plan };
   let seminars = [];
   let myBookings = new Set();
+  let chartInstances = [];
 
   /* ---------------- 日付ヘルパー ---------------- */
   const DOW = ["日", "月", "火", "水", "木", "金", "土"];
@@ -59,6 +62,20 @@
   const fmt = (d) => `${d.getMonth() + 1}/${d.getDate()}（${DOW[d.getDay()]}）`;
   const hhmm = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const weekStartKey = (d) => {
+    const x = midnight(d), day = x.getDay(), diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    return keyOf(x);
+  };
+  const numOrNull = (v) => {
+    const raw = String(v ?? "");
+    const cleaned = raw.replace(/[^\d.-]/g, "");
+    if (!cleaned) return null;
+    const n = Number(cleaned);
+    if (!Number.isFinite(n)) return null;
+    return raw.includes("万") ? n * 10000 : n;
+  };
+  const yen = (v) => v == null || v === "" ? "未入力" : Number(v).toLocaleString("ja-JP") + "円";
 
   /* ---------------- 進捗計算 ---------------- */
   const allVideos = () => D.modules.flatMap((m) => m.videos.map((v) => ({ ...v, moduleId: m.id })));
@@ -169,19 +186,17 @@
       : `<div class="nextvid" style="background:var(--green-soft);border-color:var(--line)"><div class="play" style="background:var(--green)">${icon("check")}</div><div class="nv-info"><div class="nv-k" style="color:var(--green-d)">完了</div><div class="nv-t">全モジュールを視聴し終えました</div></div></div>`;
     const wt = weekTasksOf(cw);
     const taskCard = `<div class="card">
-      <div class="card-head"><h4>今週のやること</h4><a class="act btn ghost sm" data-nav="tasks">すべて見る ${icon("arrow", "icn-sm")}</a></div>
+      <div class="card-head"><h4>今週のやること</h4><a class="act btn ghost sm" data-nav="curriculum">動画レッスンへ ${icon("arrow", "icn-sm")}</a></div>
       ${nextVidHtml}
       <div class="tasklist" style="margin-top:6px">${wt.length ? wt.map(taskRow).join("") : `<div class="empty">この週のタスクはありません</div>`}</div></div>`;
 
     const tiles = [
       { label: "動画レッスン", ic: "video", t: "t-green", nav: "curriculum" },
+      { label: "ロードマップ", ic: "map", t: "t-sky", nav: "roadmap" },
       { label: "セミナー予約", ic: "calendar", t: "t-orange", nav: "seminars" },
-      { label: "やること", ic: "check", t: "t-indigo", nav: "tasks" },
-      { label: "スケジュール", ic: "map", t: "t-sky", nav: "schedule" },
       { label: "コミュニティ", ic: "users", t: "t-green", nav: "community" },
       { label: "公式LINE", ic: "chat", t: "t-rose", href: D.links.line },
       { label: "リソース", ic: "package", t: "t-slate", nav: "resources" },
-      { label: "設計（Notion）", ic: "book", t: "t-indigo", href: D.links.notion },
     ];
     const tileHtml = tiles.map((q) => {
       const attr = q.nav ? `data-nav="${q.nav}"` : q.href ? `href="${q.href}" target="_blank"` : `data-noop title="data.js の links に設定してください"`;
@@ -199,6 +214,83 @@
 
   /* ================= カリキュラム ================= */
   const openModules = new Set();
+
+  function weeklyTasksHtml() {
+    const cw = currentWeek();
+    const wt = weekTasksOf(cw);
+    return `<div class="card" style="margin-bottom:18px;border-color:var(--green)">
+      <div class="card-head"><h4>今週のやること（Week ${cw}）</h4><span class="act pill green">Week ${cw}</span></div>
+      <div class="tasklist">${wt.length ? wt.map(taskRow).join("") : `<div class="empty">この週のタスクはありません</div>`}</div>
+    </div>`;
+  }
+
+  function dailyRoutineHtml() {
+    const today = progress.daily[keyOf(TODAY)] || {};
+    const dailyHtml = D.daily.map((d) => {
+      const done = !!today[d.id];
+      return `<div class="checkrow ${done ? "done" : ""}"><div class="cbox" data-daily="${d.id}">${icon("check", "icn-sm")}</div><div class="ctext">${esc(d.text)}</div></div>`;
+    }).join("");
+    return `<div class="sec-title"><h3>毎日のルーティン（${fmt(TODAY)}）</h3></div>
+      <div class="card" style="margin-bottom:18px"><div class="tasklist">${dailyHtml}</div><div class="note" style="margin-top:10px">チェックは日付ごとに保存されます。毎日この3つを回すのが基本リズムです。</div></div>`;
+  }
+
+  function allTasksHtml() {
+    const weeks = [...new Set(D.tasks.map((t) => t.week))].sort((a, b) => a - b);
+    const allHtml = weeks.map((w) => {
+      const ts = weekTasksOf(w), doneN = ts.filter((t) => progress.tasks[t.id]).length;
+      const label = w === 0 ? "オンボーディング" : `Week ${w}`, isNow = w === currentWeek();
+      return `<div class="card pad-sm" style="margin-bottom:12px;${isNow ? "border-color:var(--green)" : ""}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><b style="font-size:14px">${label}</b>${isNow ? `<span class="pill green">今週</span>` : ""}<span class="pill ${doneN === ts.length ? "green" : "gray"}" style="margin-left:auto">${doneN}/${ts.length} 完了</span></div>
+        <div class="tasklist">${ts.map(taskRow).join("")}</div></div>`;
+    }).join("");
+    return `<details class="fold card"><summary>すべてのやること（3ヶ月）</summary><div class="fold-body">${allHtml}</div></details>`;
+  }
+
+  function fullScheduleHtml() {
+    const ne = nextEvent();
+    const rows = D.schedule.map((ev) => {
+      const d = eventDate(ev), past = diffDays(d, TODAY) < 0, isNext = ev === ne;
+      const ic = ev.kind === "oneonone" ? "user" : ev.kind === "group" ? "users" : "award";
+      return `<div class="ev ${ev.kind} ${isNext ? "next" : ""}" style="${past ? "opacity:.5" : ""}">
+        <div class="dot">${icon(ic, "icn-sm")}</div>
+        <div class="ebody"><div class="etop"><span class="ew">${ev.week}</span>${isNext ? `<span class="pill green">次回</span>` : past ? `<span class="pill gray">終了</span>` : ""}<span class="edate">${fmt(d)}</span></div>
+          <div class="etitle">${esc(ev.title)}</div><div class="etheme">${esc(ev.theme)}</div></div></div>`;
+    }).join("");
+    return `<details class="fold card"><summary>3ヶ月カレンダー全体</summary><div class="fold-body">
+      <div class="note" style="margin-bottom:12px">開講日：${fmt(startDate())}。毎週かならずライブ接点が1つ以上あります。</div>
+      <div class="tl">${rows}</div></div></details>`;
+  }
+
+  function moduleScheduleHtml(moduleId) {
+    const events = D.schedule.filter((ev) => ev.moduleId === moduleId);
+    if (!events.length) return `<div class="module-live empty">このモジュールに紐づくライブ予定はありません</div>`;
+    return `<div class="module-live">${events.map((ev) => {
+      const d = eventDate(ev);
+      return `<div class="live-chip"><span class="pill gray">${esc(ev.week)}</span><b>${fmt(d)}</b><span>${esc(ev.kind === "oneonone" ? "1on1" : ev.kind === "group" ? "グループ" : "発表会")}</span><span>${esc(ev.theme)}</span></div>`;
+    }).join("")}</div>`;
+  }
+
+  function moduleSubmissionHtml(moduleId) {
+    const list = submissions.filter((s) => Number(s.module_id) === Number(moduleId));
+    const history = list.length ? list.map((s) => {
+      const d = s.created_at ? new Date(s.created_at) : null;
+      return `<div class="sub-row">
+        <div class="sub-main"><div class="sub-title">${esc(s.title)}</div><div class="sub-meta">${d ? `${fmt(d)} ${hhmm(d)}` : ""}${s.memo ? `・${esc(s.memo)}` : ""}</div></div>
+        ${s.url ? `<a class="btn ghost sm" href="${esc(s.url)}" target="_blank">${icon("arrow", "icn-sm")} 開く</a>` : ""}
+      </div>`;
+    }).join("") : `<div class="empty">このモジュールの提出履歴はまだありません。</div>`;
+    return `<div class="submit-box">
+      <div class="subhead">${icon("file", "icn-sm")}<b>宿題提出</b><span class="note">提出後もここから見返せます</span></div>
+      <div class="sub-form" data-submission-form="${moduleId}">
+        <input id="sub-title-${moduleId}" placeholder="成果物タイトル" />
+        <input id="sub-url-${moduleId}" placeholder="URL（Notion・スプレッドシート・GitHubなど）" />
+        <textarea id="sub-memo-${moduleId}" rows="2" placeholder="メモ（任意）"></textarea>
+        <button class="btn sm" data-submit-module="${moduleId}">提出する</button>
+      </div>
+      <div class="sub-history">${history}</div>
+    </div>`;
+  }
+
   function renderCurriculum() {
     const o = overall();
     const mods = D.modules.map((m) => {
@@ -220,13 +312,59 @@
           <div class="minfo"><div class="mt">${esc(m.title)} ${m.gate ? `<span class="pill orange">${D.gates.find((g) => g.id === m.gate).label}</span>` : ""}</div><div class="mg">${esc(m.goal)}</div></div>
           <div class="mright"><div class="mbarwrap"><div class="mbar"><i style="width:${st.pct}%"></i></div><div class="mfrac">${st.done}/${st.total} 本</div></div>${icon("chevron", "caret icn")}</div>
         </div>
-        <div class="mbody"><div class="mdeliver">${icon("package", "icn-sm")}<span><b>この章の成果物：</b>${esc(m.deliverable)}</span></div>${vids}</div>
+        <div class="mbody">
+          <div class="mdeliver">${icon("package", "icn-sm")}<span><b>この章の成果物：</b>${esc(m.deliverable)}</span></div>
+          ${vids}
+          <div class="mblock"><div class="mblock-title">${icon("calendar", "icn-sm")} 関連ライブ予定</div>${moduleScheduleHtml(m.id)}</div>
+          <div class="mblock">${moduleSubmissionHtml(m.id)}</div>
+        </div>
       </div>`;
     }).join("");
     return `<div class="card curhead">
         <div class="ci"><div class="t">一本道カリキュラム（8モジュール → 3ゲート）</div><div class="note" style="margin-top:4px">1本＝1成果物＝1前進。迷ったら「次の1本」だけ進めればOKです。</div></div>
         <div class="cp"><div class="big">${o.pct}%</div><div class="note">${o.done} / ${o.total} 本 視聴済み</div></div>
-      </div>${mods}`;
+      </div>
+      ${weeklyTasksHtml()}
+      ${dailyRoutineHtml()}
+      ${mods}
+      ${allTasksHtml()}
+      ${fullScheduleHtml()}`;
+  }
+
+  /* ================= ロードマップ ================= */
+  const ROADMAP_PHASES = [
+    { label: "1ヶ月目", sub: "内製化", mods: [0, 1, 2, 3] },
+    { label: "2ヶ月目", sub: "営業・導入", mods: [4, 5, 6] },
+    { label: "自走フェーズ", sub: "継続運用", mods: [7] },
+  ];
+  function phaseStat(p) {
+    const mods = p.mods.map(moduleById).filter(Boolean);
+    const total = mods.reduce((n, m) => n + moduleStat(m).total, 0);
+    const done = mods.reduce((n, m) => n + moduleStat(m).done, 0);
+    return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
+  }
+  function renderRoadmap() {
+    const o = overall();
+    const cards = ROADMAP_PHASES.map((p) => {
+      const st = phaseStat(p);
+      const deliverables = p.mods.map(moduleById).filter(Boolean).map((m) => `<li><b>${esc(m.badge)}</b> ${esc(m.deliverable)}</li>`).join("");
+      return `<div class="road-card card">
+        <div class="road-top"><div><div class="road-label">${esc(p.label)}</div><div class="road-sub">${esc(p.sub)}</div></div><span class="pill ${st.pct === 100 ? "green" : "gray"}">${st.done}/${st.total} 本</span></div>
+        <div class="road-bar"><i style="width:${st.pct}%"></i></div>
+        <div class="road-pct">${st.pct}%</div>
+        <ul class="road-list">${deliverables}</ul>
+      </div>`;
+    }).join("");
+    return `<div class="card road-head">
+        <div><div class="t">3ヶ月ロードマップ</div><div class="note">1ヶ月目は内製化、2ヶ月目は営業・導入、自走フェーズで継続運用へ進みます。</div></div>
+        <div class="road-now"><b>現在地</b><span>Week ${currentWeek()} / 12</span></div>
+      </div>
+      <div class="road-track card">
+        <div class="road-line"><i style="width:${o.pct}%"></i></div>
+        <div class="road-avatar" style="left:${Math.min(100, Math.max(0, o.pct))}%">${icon("user", "icn-sm")}</div>
+        <div class="road-marks"><span>開始</span><span>1ヶ月目</span><span>2ヶ月目</span><span>自走</span></div>
+      </div>
+      <div class="road-grid">${cards}</div>`;
   }
 
   /* ================= セミナー予約 ================= */
@@ -263,49 +401,15 @@
       ${up.length ? cards : `<div class="card"><div class="empty">現在予約できるセミナーはありません。新しい枠が追加されるとここに表示されます。</div></div>`}`;
   }
 
-  /* ================= やること ================= */
-  function renderTasks() {
-    const cw = currentWeek();
-    const wt = weekTasksOf(cw);
-    const today = progress.daily[keyOf(TODAY)] || {};
-    const dailyHtml = D.daily.map((d) => {
-      const done = !!today[d.id];
-      return `<div class="checkrow ${done ? "done" : ""}"><div class="cbox" data-daily="${d.id}">${icon("check", "icn-sm")}</div><div class="ctext">${esc(d.text)}</div></div>`;
-    }).join("");
-    const weeks = [...new Set(D.tasks.map((t) => t.week))].sort((a, b) => a - b);
-    const allHtml = weeks.map((w) => {
-      const ts = weekTasksOf(w), doneN = ts.filter((t) => progress.tasks[t.id]).length;
-      const label = w === 0 ? "オンボーディング" : `Week ${w}`, isNow = w === cw;
-      return `<div class="card pad-sm" style="margin-bottom:12px;${isNow ? "border-color:var(--green)" : ""}">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><b style="font-size:14px">${label}</b>${isNow ? `<span class="pill green">今週</span>` : ""}<span class="pill ${doneN === ts.length ? "green" : "gray"}" style="margin-left:auto">${doneN}/${ts.length} 完了</span></div>
-        <div class="tasklist">${ts.map(taskRow).join("")}</div></div>`;
-    }).join("");
-    return `<div class="card" style="margin-bottom:18px;border-color:var(--green)">
-        <div class="card-head"><h4>今週のやること（Week ${cw}）</h4><span class="act pill green">Week ${cw}</span></div>
-        <div class="tasklist">${wt.length ? wt.map(taskRow).join("") : `<div class="empty">この週のタスクはありません</div>`}</div></div>
-      <div class="sec-title"><h3>毎日のルーティン（${fmt(TODAY)}）</h3></div>
-      <div class="card"><div class="tasklist">${dailyHtml}</div><div class="note" style="margin-top:10px">チェックは日付ごとに保存されます。毎日この3つを回すのが基本リズムです。</div></div>
-      <div class="sec-title"><h3>すべてのやること（3ヶ月）</h3></div>${allHtml}`;
-  }
-
-  /* ================= スケジュール ================= */
-  function renderSchedule() {
-    const ne = nextEvent();
-    const rows = D.schedule.map((ev) => {
-      const d = eventDate(ev), past = diffDays(d, TODAY) < 0, isNext = ev === ne;
-      const ic = ev.kind === "oneonone" ? "user" : ev.kind === "group" ? "users" : "award";
-      return `<div class="ev ${ev.kind} ${isNext ? "next" : ""}" style="${past ? "opacity:.5" : ""}">
-        <div class="dot">${icon(ic, "icn-sm")}</div>
-        <div class="ebody"><div class="etop"><span class="ew">${ev.week}</span>${isNext ? `<span class="pill green">次回</span>` : past ? `<span class="pill gray">終了</span>` : ""}<span class="edate">${fmt(d)}</span></div>
-          <div class="etitle">${esc(ev.title)}</div><div class="etheme">${esc(ev.theme)}</div></div></div>`;
-    }).join("");
-    return `<div class="card" style="margin-bottom:18px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
-        <div style="flex:1 1 240px"><div style="font-weight:800;font-size:16px">3ヶ月カレンダー（週1ライブ × 全12回 ＋ 月1発表会）</div><div class="note" style="margin-top:4px">開講日：${fmt(startDate())}。毎週かならずライブ接点が1つ以上あります。</div></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill green">1on1 MTG</span><span class="pill" style="background:#dbf4fb;color:#1487ad">グループセミナー</span><span class="pill orange">成果発表会</span></div></div>
-      <div class="card"><div class="tl">${rows}</div></div>`;
-  }
-
   /* ================= コミュニティ ================= */
+  function guaranteeChecklistHtml() {
+    const gHtml = D.guarantee.items.map((it) => {
+      const done = !!progress.guarantee[it.id];
+      return `<div class="checkrow ${done ? "done" : ""}"><div class="cbox" data-guarantee="${it.id}">${icon("check", "icn-sm")}</div><div class="ctext">${esc(it.label)}</div></div>`;
+    }).join("");
+    return `<div class="note" style="margin-bottom:10px">${esc(D.guarantee.note)}</div><div class="tasklist">${gHtml}</div>`;
+  }
+
   function renderCommunity() {
     const streak = reportStreak(), recent = reports.slice(0, 3);
     const linkBtn = (url, label, ic) => url
@@ -314,7 +418,7 @@
     const recentHtml = recent.length ? recent.map((r) => `<div class="card pad-sm" style="margin-bottom:10px">
         <div style="font-size:12px;color:var(--faint);font-weight:700;margin-bottom:5px">${r.date}</div>
         <div style="font-size:13px"><b>やった：</b>${esc(r.did || "—")}</div><div style="font-size:13px"><b>詰まり：</b>${esc(r.stuck || "—")}</div>
-        <div style="font-size:13px"><b>明日：</b>${esc(r.next || "—")}</div>${r.win ? `<div style="font-size:13px;color:var(--green-d)"><b>Win：</b>${esc(r.win)}</div>` : ""}</div>`).join("")
+        <div style="font-size:13px"><b>明日：</b>${esc(r.next || "—")}</div><div style="font-size:13px"><b>稼働：</b>${r.hours != null ? esc(r.hours) + "時間" : "—"}</div>${r.win ? `<div style="font-size:13px;color:var(--green-d)"><b>Win：</b>${esc(r.win)}</div>` : ""}</div>`).join("")
       : `<div class="empty">まだ日報がありません。今日の3行を書いてみましょう。</div>`;
     const badgesHtml = D.badges.map((b) => {
       let on = false;
@@ -324,24 +428,43 @@
       else if (b.unlock.startsWith("streak:")) on = streak >= Number(b.unlock.split(":")[1]);
       return `<div class="badge ${on ? "on" : "off"}">${on ? "" : `<span class="lk">${icon("lock", "icn-sm")}</span>`}<div class="bic">${icon(b.icon)}</div><div class="bt">${esc(b.title)}</div><div class="bd">${esc(b.desc)}</div></div>`;
     }).join("");
-    const gHtml = D.guarantee.items.map((it) => {
-      const done = !!progress.guarantee[it.id];
-      return `<div class="checkrow ${done ? "done" : ""}"><div class="cbox" data-guarantee="${it.id}">${icon("check", "icn-sm")}</div><div class="ctext">${esc(it.label)}</div></div>`;
-    }).join("");
+    const weeklyRecent = weeklyReports.slice(0, 4);
+    const weeklyHtml = weeklyRecent.length ? weeklyRecent.map((r) => `<div class="card pad-sm" style="margin-bottom:10px">
+      <div style="font-size:12px;color:var(--faint);font-weight:700;margin-bottom:5px">週開始: ${esc(r.week_start)}</div>
+      <div style="font-size:13px"><b>売上：</b>${yen(r.sales_amount)}</div>
+      <div style="font-size:13px"><b>案件状況：</b>${esc(r.deals_text || "—")}</div>
+      <div style="font-size:13px"><b>営業件数：</b>${r.sales_activity_count ?? "—"}</div>
+      ${r.note ? `<div style="font-size:13px;color:var(--muted)"><b>所感：</b>${esc(r.note)}</div>` : ""}
+    </div>`).join("") : `<div class="empty">まだ週報がありません。面談前の整理に使ってください。</div>`;
+    const weekGuide = TODAY.getDay() === 6 ? "明日の面談に向けて、今週の売上・案件状況を整理しましょう。" : "週報は土曜を目安に書きます。面談前以外でも、いつでも保存できます。";
     return `<div class="card" style="margin-bottom:18px"><div class="card-head"><h4>コミュニティ（LINE中心）</h4></div>
         <div class="linkrow">${linkBtn(D.links.line, "公式LINEを開く", "chat")}${linkBtn(D.links.dashboard, "進捗ダッシュボード", "trending")}${linkBtn(D.links.zoom, "ライブ用Zoom", "video")}</div></div>
       <div class="sec-title"><h3>今日の日報（3行＋Win）</h3></div>
       <div class="card report">
-        <div class="streak"><div class="sbig">${icon("flame", "icn")}<span class="num">${streak}</span></div><div><div style="font-weight:800">日連続ストリーク</div><div class="note">締切は毎日23:59。提出率80%が返金要件です。</div></div></div>
+        <div class="streak"><div class="sbig">${icon("flame", "icn")}<span class="num">${streak}</span></div><div><div style="font-weight:800">日連続ストリーク</div><div class="note">締切は毎日23:59。毎日の進捗を短く残しましょう。</div></div></div>
         <div class="fld"><label>① やったこと</label><textarea id="r-did" rows="2" placeholder="例: n8nの最小ワークフローを1本動かした"></textarea></div>
         <div class="fld"><label>② 詰まり / 質問</label><textarea id="r-stuck" rows="2" placeholder="例: Webhookの認証でエラーが出る"></textarea></div>
         <div class="fld"><label>③ 明日の最小1アクション</label><textarea id="r-next" rows="2" placeholder="例: 提案先リストを3件書き出す"></textarea></div>
+        <div class="fld"><label>今日の稼働時間（時間）</label><input id="r-hours" type="number" min="0" step="0.25" placeholder="例: 2.5" /></div>
         <div class="fld"><label>Win <small>（任意・小さな勝ちを1つ）</small></label><input id="r-win" placeholder="例: クライアント候補から返信が来た" /></div>
         <div class="linkrow"><button class="btn" id="saveReport">日報を保存</button><button class="btn ghost" id="copyReport">${icon("chat", "icn-sm")} LINE用にコピー</button></div></div>
+      <div class="sec-title"><h3>週報</h3></div>
+      <div class="card report">
+        <div class="note" style="margin-bottom:12px">${weekGuide}</div>
+        <div class="fld"><label>今週の売上（円）</label><input id="w-sales" inputmode="decimal" placeholder="例: 50000" /></div>
+        <div class="fld"><label>今週の案件状況・営業活動</label><textarea id="w-deals" rows="3" placeholder="例: 継続案件A社: 月5万円で運用中／新規2件アプローチ、1件商談中"></textarea></div>
+        <div class="fld"><label>営業件数 <small>（任意）</small></label><input id="w-activity" type="number" min="0" step="1" placeholder="例: 3" /></div>
+        <div class="fld"><label>所感 <small>（任意）</small></label><textarea id="w-note" rows="2" placeholder="例: 価格提示の反応がよかった。来週は提案書を1本仕上げる"></textarea></div>
+        <div class="linkrow"><button class="btn" id="saveWeeklyReport">週報を保存</button><span class="note">対象週: ${weekStartKey(TODAY)} 開始</span></div>
+      </div>
+      <div class="sec-title"><h3>進捗の可視化</h3></div>
+      <div class="row2 even">
+        <div class="card chart-card"><div class="card-head"><h4>稼働時間の推移</h4></div><div id="hoursEmpty" class="empty" style="display:none">稼働時間つきの日報がまだありません。</div><canvas id="hoursChart" height="180"></canvas></div>
+        <div class="card chart-card"><div class="card-head"><h4>売上推移</h4></div><div id="salesEmpty" class="empty" style="display:none">売上つきの週報がまだありません。</div><canvas id="salesChart" height="180"></canvas></div>
+      </div>
+      <div class="sec-title"><h3>最近の週報</h3></div><div>${weeklyHtml}</div>
       <div class="sec-title"><h3>最近の日報</h3></div><div>${recentHtml}</div>
-      <div class="sec-title"><h3>称号バッジ</h3></div><div class="badges">${badgesHtml}</div>
-      <div class="sec-title"><h3>返金・延長伴走の参加要件（自己チェック）</h3></div>
-      <div class="card"><div class="note" style="margin-bottom:10px">${esc(D.guarantee.note)}</div><div class="tasklist">${gHtml}</div></div>`;
+      <div class="sec-title"><h3>称号バッジ</h3></div><div class="badges">${badgesHtml}</div>`;
   }
 
   /* ================= リソース ================= */
@@ -349,24 +472,88 @@
     const tpl = D.templates.map((t) => `<a class="res" ${t.link ? `href="${t.link}" target="_blank"` : "data-noop"}><div class="itile t-green">${icon(t.icon)}</div><div><div class="rt">${esc(t.title)}</div><div class="rd">${esc(t.desc)}</div></div><div class="arrow">${t.link ? icon("arrow", "icn-sm") : ""}</div></a>`).join("");
     const rescueHtml = D.rescue.map((r) => `<a class="res" ${r.url ? `href="${r.url}" target="_blank"` : "data-noop"}><div class="itile t-rose">${icon(r.icon)}</div><div><div class="rt">${esc(r.title)}</div><div class="rd">${esc(r.desc)}</div></div></a>`).join("");
     return `<div class="sec-title"><h3>困ったらこの3本（レスキュー動線）</h3></div><div class="rescue">${rescueHtml}</div>
-      <div class="sec-title"><h3>テンプレート / リソース棚</h3></div><div class="rgrid">${tpl}</div>
+      <div class="sec-title"><h3>テンプレ集</h3></div><div class="rgrid">${tpl}</div>
       <div class="sec-title"><h3>リンク</h3></div>
       <div class="card"><a class="res" href="${D.links.notion}" target="_blank" style="box-shadow:none;border:none;padding:8px"><div class="itile t-slate">${icon("book")}</div><div><div class="rt">スクール全体設計（Notion）</div><div class="rd">設計の原本。最新の方針はこちら</div></div><div class="arrow">${icon("arrow", "icn-sm")}</div></a><div class="note" style="margin-top:6px">テンプレやレスキュー動画のURLは <code>assets/data.js</code> で設定できます。</div></div>`;
+  }
+
+  function renderAccountBody() {
+    const rows = [
+      ["受講生名", student.name],
+      ["期", student.cohort],
+      ["プラン", student.plan],
+      ["会員番号", student.member_no || "未設定"],
+    ].map(([k, v]) => `<div class="account-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
+    return `<div class="account-grid">${rows}</div>
+      <div class="sec-title"><h3>返金・延長伴走の参加要件（自己チェック）</h3></div>
+      <div class="card pad-sm">${guaranteeChecklistHtml()}</div>`;
+  }
+
+  function destroyCharts() {
+    chartInstances.forEach((c) => c.destroy());
+    chartInstances = [];
+  }
+
+  function renderCharts() {
+    destroyCharts();
+    if (!window.Chart || !document.getElementById("view-community")?.classList.contains("active")) return;
+    const hoursCanvas = document.getElementById("hoursChart");
+    const salesCanvas = document.getElementById("salesChart");
+    if (!hoursCanvas || !salesCanvas) return;
+
+    const hourRows = reports
+      .filter((r) => r.hours != null && r.hours !== "")
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-28);
+    const hoursEmpty = document.getElementById("hoursEmpty");
+    if (hourRows.length) {
+      hoursEmpty.style.display = "none";
+      hoursCanvas.style.display = "block";
+      chartInstances.push(new Chart(hoursCanvas, {
+        type: "bar",
+        data: { labels: hourRows.map((r) => r.date.slice(5)), datasets: [{ label: "稼働時間", data: hourRows.map((r) => Number(r.hours) || 0), backgroundColor: "#1f8fcf" }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+      }));
+    } else {
+      hoursEmpty.style.display = "block";
+      hoursCanvas.style.display = "none";
+    }
+
+    const salesRows = weeklyReports
+      .filter((r) => r.sales_amount != null && r.sales_amount !== "")
+      .slice()
+      .sort((a, b) => String(a.week_start).localeCompare(String(b.week_start)))
+      .slice(-12);
+    const salesEmpty = document.getElementById("salesEmpty");
+    if (salesRows.length) {
+      salesEmpty.style.display = "none";
+      salesCanvas.style.display = "block";
+      chartInstances.push(new Chart(salesCanvas, {
+        type: "line",
+        data: { labels: salesRows.map((r) => String(r.week_start).slice(5)), datasets: [{ label: "売上", data: salesRows.map((r) => Number(r.sales_amount) || 0), borderColor: "#16a7d6", backgroundColor: "rgba(22,167,214,.12)", tension: .25, fill: true }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+      }));
+    } else {
+      salesEmpty.style.display = "block";
+      salesCanvas.style.display = "none";
+    }
   }
 
   /* ================= 描画 & ルーティング ================= */
   const VIEWS = {
     home: { title: "ホーム", render: renderHome },
     curriculum: { title: "動画レッスン", render: renderCurriculum },
+    roadmap: { title: "ロードマップ", render: renderRoadmap },
     seminars: { title: "セミナー予約", render: renderSeminars },
-    tasks: { title: "やること", render: renderTasks },
-    schedule: { title: "スケジュール", render: renderSchedule },
     community: { title: "コミュニティ", render: renderCommunity },
     resources: { title: "リソース", render: renderResources },
   };
 
   function render() {
+    destroyCharts();
     for (const id in VIEWS) document.getElementById("view-" + id).innerHTML = VIEWS[id].render();
+    document.getElementById("accountBody").innerHTML = renderAccountBody();
     const o = overall();
     document.getElementById("sideProgPct").textContent = o.pct + "%";
     document.getElementById("sideProgBar").style.width = o.pct + "%";
@@ -375,12 +562,14 @@
     document.getElementById("chipAv").textContent = (student.name || "受")[0];
     const oc = openTaskCount(), badge = document.getElementById("taskBadge");
     badge.textContent = oc; badge.style.display = oc > 0 ? "grid" : "none";
+    setTimeout(renderCharts, 0);
   }
   function applyActive() {
     const v = location.hash.replace("#", "") || "home";
     const view = VIEWS[v] ? v : "home";
     for (const id in VIEWS) document.getElementById("view-" + id).classList.toggle("active", id === view);
     document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.view === view));
+    setTimeout(renderCharts, 0);
   }
   function route() { applyActive(); document.getElementById("app").classList.remove("menu-open"); window.scrollTo(0, 0); }
 
@@ -411,6 +600,9 @@
     b.className = w ? "btn ghost" : "btn";
   }
   function closeModal() { document.getElementById("modal").classList.remove("open"); document.getElementById("modalFrame").innerHTML = ""; currentVid = null; }
+  function openAccountModal() { document.getElementById("accountModal").classList.add("open"); }
+  function closeAccountModal() { document.getElementById("accountModal").classList.remove("open"); }
+  function closeAllModals() { closeModal(); closeAccountModal(); }
 
   /* ================= トースト ================= */
   let toastT;
@@ -438,14 +630,16 @@
   /* ================= 認証 ================= */
   async function enterPortal(user) {
     uid = user.id;
-    const [prof, prog, reps, sems, books] = await Promise.all([
-      DB.getProfile(uid), DB.getProgress(uid), DB.getReports(uid), DB.getSeminars(), DB.getMyBookings(uid),
+    const [prof, prog, reps, weekly, subs, sems, books] = await Promise.all([
+      DB.getProfile(uid), DB.getProgress(uid), DB.getReports(uid), DB.getWeeklyReports(uid), DB.getSubmissions(uid), DB.getSeminars(), DB.getMyBookings(uid),
     ]);
     if (prof.data) {
       student = { name: prof.data.name || "受講生", cohort: prof.data.cohort || "1期", start_date: prof.data.start_date || "2026-06-01", member_no: prof.data.member_no || "", plan: D.student.plan };
     }
     progress = Object.assign({ watched: {}, tasks: {}, daily: {}, guarantee: {} }, (prog.data && prog.data.data) || {});
-    reports = (reps.data || []).map((r) => ({ date: r.report_date, did: r.did, stuck: r.stuck, next: r.next, win: r.win }));
+    reports = (reps.data || []).map((r) => ({ date: r.report_date, did: r.did, stuck: r.stuck, next: r.next, win: r.win, hours: r.hours }));
+    weeklyReports = weekly.data || [];
+    submissions = subs.data || [];
     seminars = sems.data || [];
     myBookings = new Set((books.data || []).map((b) => b.seminar_id));
     const nv = nextVideo(); openModules.clear(); openModules.add(nv ? nv.moduleId : 0);
@@ -478,16 +672,32 @@
     window.addEventListener("hashchange", route);
     document.getElementById("hamburger").addEventListener("click", () => document.getElementById("app").classList.toggle("menu-open"));
     document.getElementById("backdrop").addEventListener("click", () => document.getElementById("app").classList.remove("menu-open"));
+    document.getElementById("studentChip").addEventListener("click", openAccountModal);
+    document.getElementById("studentChip").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAccountModal(); } });
 
     document.body.addEventListener("click", async (e) => {
-      const t = e.target.closest("[data-watch],[data-open-video],[data-toggle-module],[data-task],[data-daily],[data-guarantee],[data-nav],[data-close],[data-noop],[data-book],[data-cancel]");
+      const t = e.target.closest("[data-watch],[data-open-video],[data-toggle-module],[data-task],[data-daily],[data-guarantee],[data-nav],[data-close],[data-noop],[data-book],[data-cancel],[data-submit-module]");
       if (t) {
         if (t.dataset.noop !== undefined) { e.preventDefault(); return; }
-        if (t.dataset.close !== undefined) { closeModal(); return; }
+        if (t.dataset.close !== undefined) { closeAllModals(); return; }
         if (t.dataset.nav) { e.preventDefault(); location.hash = t.dataset.nav; return; }
         if (t.dataset.openVideo) { e.preventDefault(); openVideo(t.dataset.openVideo); return; }
         if (t.dataset.book) { e.preventDefault(); bookSeminar(t.dataset.book); return; }
         if (t.dataset.cancel) { e.preventDefault(); cancelSeminar(t.dataset.cancel); return; }
+        if (t.dataset.submitModule) {
+          e.preventDefault();
+          const moduleId = Number(t.dataset.submitModule);
+          const s = { module_id: moduleId, title: val(`sub-title-${moduleId}`), url: val(`sub-url-${moduleId}`), memo: val(`sub-memo-${moduleId}`) };
+          if (!s.title || !s.url) { toast("タイトルとURLを入力してください"); return; }
+          t.disabled = true;
+          // submissions への insert が、将来のLINE通知・Notion確認フローのトリガーになる想定です。
+          const { error } = await DB.saveSubmission(uid, s);
+          if (error) { toast("提出に失敗しました"); t.disabled = false; return; }
+          const { data } = await DB.getSubmissions(uid);
+          submissions = data || [];
+          render(); applyActive(); toast("宿題を提出しました");
+          return;
+        }
         if (t.dataset.watch) { progress.watched[t.dataset.watch] = !progress.watched[t.dataset.watch]; refresh(); return; }
         if (t.dataset.toggleModule) { const id = Number(t.dataset.toggleModule); openModules.has(id) ? openModules.delete(id) : openModules.add(id); render(); applyActive(); return; }
         if (t.dataset.task) { progress.tasks[t.dataset.task] = !progress.tasks[t.dataset.task]; refresh(); return; }
@@ -495,17 +705,34 @@
         if (t.dataset.guarantee) { progress.guarantee[t.dataset.guarantee] = !progress.guarantee[t.dataset.guarantee]; refresh(); return; }
       }
       if (e.target.closest("#saveReport")) {
-        const r = { date: keyOf(TODAY), did: val("r-did"), stuck: val("r-stuck"), next: val("r-next"), win: val("r-win") };
+        const hours = val("r-hours");
+        const r = { date: keyOf(TODAY), did: val("r-did"), stuck: val("r-stuck"), next: val("r-next"), win: val("r-win"), hours: hours ? Number(hours) : null };
         if (!r.did && !r.stuck && !r.next) { toast("最低1つは記入してください"); return; }
         const btn = e.target.closest("#saveReport"); btn.disabled = true;
         const { error } = await DB.saveReport(uid, r);
         if (error) { toast("保存に失敗しました"); btn.disabled = false; return; }
         const { data } = await DB.getReports(uid);
-        reports = (data || []).map((x) => ({ date: x.report_date, did: x.did, stuck: x.stuck, next: x.next, win: x.win }));
+        reports = (data || []).map((x) => ({ date: x.report_date, did: x.did, stuck: x.stuck, next: x.next, win: x.win, hours: x.hours }));
         render(); applyActive(); toast("日報を保存しました");
       }
+      if (e.target.closest("#saveWeeklyReport")) {
+        const r = {
+          week_start: weekStartKey(TODAY),
+          sales_amount: val("w-sales") ? numOrNull(val("w-sales")) : null,
+          deals_text: val("w-deals"),
+          sales_activity_count: val("w-activity") ? Number(val("w-activity")) : null,
+          note: val("w-note"),
+        };
+        if (!r.deals_text && r.sales_amount == null && r.sales_activity_count == null && !r.note) { toast("最低1つは記入してください"); return; }
+        const btn = e.target.closest("#saveWeeklyReport"); btn.disabled = true;
+        const { error } = await DB.saveWeeklyReport(uid, r);
+        if (error) { toast("週報の保存に失敗しました"); btn.disabled = false; return; }
+        const { data } = await DB.getWeeklyReports(uid);
+        weeklyReports = data || [];
+        render(); applyActive(); toast("週報を保存しました");
+      }
       if (e.target.closest("#copyReport")) {
-        const txt = `【日報 ${keyOf(TODAY)}】\n①やったこと: ${val("r-did")}\n②詰まり/質問: ${val("r-stuck")}\n③明日の最小1アクション: ${val("r-next")}\n${val("r-win") ? "Win: " + val("r-win") : ""}`.trim();
+        const txt = `【日報 ${keyOf(TODAY)}】\n①やったこと: ${val("r-did")}\n②詰まり/質問: ${val("r-stuck")}\n③明日の最小1アクション: ${val("r-next")}\n稼働時間: ${val("r-hours") || "未入力"}時間\n${val("r-win") ? "Win: " + val("r-win") : ""}`.trim();
         navigator.clipboard?.writeText(txt).then(() => toast("LINE用にコピーしました"), () => toast("コピーに失敗しました"));
       }
     });
@@ -516,7 +743,7 @@
       render(); applyActive(); scheduleSave(); updateModalBtn();
       toast(isWatched(currentVid.id) ? "視聴済みにしました" : "視聴済みを取り消しました");
     });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllModals(); });
   }
 
   /* ================= 初期化 ================= */
