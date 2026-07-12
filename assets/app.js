@@ -94,8 +94,6 @@
 
   const startDate = () => parse(student.start_date);
   const currentWeek = () => Math.min(12, Math.max(1, Math.floor(diffDays(TODAY, startDate()) / 7) + 1));
-  const eventDate = (ev) => addDays(startDate(), ev.offset);
-  const nextEvent = () => D.schedule.find((ev) => diffDays(eventDate(ev), TODAY) >= 0) || null;
   const weekTasksOf = (w) => D.tasks.filter((t) => t.week === w);
   const openTaskCount = () => weekTasksOf(currentWeek()).filter((t) => !progress.tasks[t.id]).length;
 
@@ -234,42 +232,6 @@
       <div class="card" style="margin-bottom:18px"><div class="tasklist">${dailyHtml}</div><div class="note" style="margin-top:10px">チェックは日付ごとに保存されます。毎日この3つを回すのが基本リズムです。</div></div>`;
   }
 
-  function allTasksHtml() {
-    const weeks = [...new Set(D.tasks.map((t) => t.week))].sort((a, b) => a - b);
-    const allHtml = weeks.map((w) => {
-      const ts = weekTasksOf(w), doneN = ts.filter((t) => progress.tasks[t.id]).length;
-      const label = w === 0 ? "オンボーディング" : `Week ${w}`, isNow = w === currentWeek();
-      return `<div class="card pad-sm" style="margin-bottom:12px;${isNow ? "border-color:var(--green)" : ""}">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><b style="font-size:14px">${label}</b>${isNow ? `<span class="pill green">今週</span>` : ""}<span class="pill ${doneN === ts.length ? "green" : "gray"}" style="margin-left:auto">${doneN}/${ts.length} 完了</span></div>
-        <div class="tasklist">${ts.map(taskRow).join("")}</div></div>`;
-    }).join("");
-    return `<details class="fold card"><summary>すべてのやること（3ヶ月）</summary><div class="fold-body">${allHtml}</div></details>`;
-  }
-
-  function fullScheduleHtml() {
-    const ne = nextEvent();
-    const rows = D.schedule.map((ev) => {
-      const d = eventDate(ev), past = diffDays(d, TODAY) < 0, isNext = ev === ne;
-      const ic = ev.kind === "oneonone" ? "user" : ev.kind === "group" ? "users" : "award";
-      return `<div class="ev ${ev.kind} ${isNext ? "next" : ""}" style="${past ? "opacity:.5" : ""}">
-        <div class="dot">${icon(ic, "icn-sm")}</div>
-        <div class="ebody"><div class="etop"><span class="ew">${ev.week}</span>${isNext ? `<span class="pill green">次回</span>` : past ? `<span class="pill gray">終了</span>` : ""}<span class="edate">${fmt(d)}</span></div>
-          <div class="etitle">${esc(ev.title)}</div><div class="etheme">${esc(ev.theme)}</div></div></div>`;
-    }).join("");
-    return `<details class="fold card"><summary>3ヶ月カレンダー全体</summary><div class="fold-body">
-      <div class="note" style="margin-bottom:12px">開講日：${fmt(startDate())}。毎週かならずライブ接点が1つ以上あります。</div>
-      <div class="tl">${rows}</div></div></details>`;
-  }
-
-  function moduleScheduleHtml(moduleId) {
-    const events = D.schedule.filter((ev) => ev.moduleId === moduleId);
-    if (!events.length) return `<div class="module-live empty">このモジュールに紐づくライブ予定はありません</div>`;
-    return `<div class="module-live">${events.map((ev) => {
-      const d = eventDate(ev);
-      return `<div class="live-chip"><span class="pill gray">${esc(ev.week)}</span><b>${fmt(d)}</b><span>${esc(ev.kind === "oneonone" ? "1on1" : ev.kind === "group" ? "グループ" : "発表会")}</span><span>${esc(ev.theme)}</span></div>`;
-    }).join("")}</div>`;
-  }
-
   function moduleSubmissionHtml(moduleId) {
     const list = submissions.filter((s) => Number(s.module_id) === Number(moduleId));
     const history = list.length ? list.map((s) => {
@@ -291,8 +253,9 @@
     </div>`;
   }
 
-  function renderCurriculum() {
-    const o = overall();
+  let curTab = "main";
+
+  function renderMainCurriculum() {
     const mods = D.modules.map((m) => {
       const st = moduleStat(m);
       const cls = `mod card ${openModules.has(m.id) ? "open" : ""} ${m.gate ? "gate" : ""} ${st.complete ? "mod-done" : ""}`;
@@ -315,20 +278,160 @@
         <div class="mbody">
           <div class="mdeliver">${icon("package", "icn-sm")}<span><b>この章の成果物：</b>${esc(m.deliverable)}</span></div>
           ${vids}
-          <div class="mblock"><div class="mblock-title">${icon("calendar", "icn-sm")} 関連ライブ予定</div>${moduleScheduleHtml(m.id)}</div>
-          <div class="mblock">${moduleSubmissionHtml(m.id)}</div>
         </div>
       </div>`;
     }).join("");
+    return `${weeklyTasksHtml()}
+      ${dailyRoutineHtml()}
+      ${mods}`;
+  }
+
+  function renderExtraVideos() {
+    const list = D.extraVideos || [];
+    if (!list.length) {
+      return `<div class="card"><div class="empty">準備中です。メイン講義以外に、いつでも見られる補助動画をここに追加していく予定です。</div></div>`;
+    }
+    const rows = list.map((v) => {
+      const w = isWatched(v.id);
+      return `<div class="vid ${w ? "watched" : ""}">
+        <div class="vcbox" data-watch="${v.id}" title="視聴済みにする">${icon("check", "icn-sm")}</div>
+        <div class="vmain" data-open-video="${v.id}">
+          <div class="vplay">${icon(w ? "check" : "play", "icn-sm")}</div>
+          <div><div class="vt">${esc(v.title)}</div><div class="vm">${v.min ? v.min + "分" : ""}${v.url ? "" : "・<span>準備中</span>"}</div></div>
+        </div>
+        <span class="pill ${w ? "green" : "gray"}">${w ? "視聴済" : "未視聴"}</span></div>`;
+    }).join("");
+    return `<div class="card"><div class="tasklist">${rows}</div></div>`;
+  }
+
+  function renderCurriculum() {
+    const o = overall();
+    const tabs = `<div class="curtabs">
+      <button class="curtab ${curTab === "main" ? "active" : ""}" data-curtab="main">
+        ${icon("map", "icn")}<div><div class="ct-t">メイン講義</div><div class="ct-d">一本道カリキュラム（8モジュール → 3ゲート）</div></div>
+      </button>
+      <button class="curtab ${curTab === "extra" ? "active" : ""}" data-curtab="extra">
+        ${icon("video", "icn")}<div><div class="ct-t">いつでも見れる動画</div><div class="ct-d">メイン講義以外の補助教材</div></div>
+      </button>
+    </div>`;
     return `<div class="card curhead">
-        <div class="ci"><div class="t">一本道カリキュラム（8モジュール → 3ゲート）</div><div class="note" style="margin-top:4px">1本＝1成果物＝1前進。迷ったら「次の1本」だけ進めればOKです。</div></div>
+        <div class="ci"><div class="t">動画レッスン</div><div class="note" style="margin-top:4px">受けたい講義を選んでください。迷ったら「メイン講義」の「次の1本」だけ進めればOKです。</div></div>
         <div class="cp"><div class="big">${o.pct}%</div><div class="note">${o.done} / ${o.total} 本 視聴済み</div></div>
       </div>
-      ${weeklyTasksHtml()}
-      ${dailyRoutineHtml()}
-      ${mods}
-      ${allTasksHtml()}
-      ${fullScheduleHtml()}`;
+      ${tabs}
+      ${curTab === "main" ? renderMainCurriculum() : renderExtraVideos()}`;
+  }
+
+  /* ---------------- レッスンページ（1動画＝1ページ） ---------------- */
+  function findVideoContext(id) {
+    const flat = allVideos();
+    const idx = flat.findIndex((v) => v.id === id);
+    if (idx !== -1) {
+      return { video: flat[idx], prev: flat[idx - 1] || null, next: flat[idx + 1] || null, module: moduleById(flat[idx].moduleId) };
+    }
+    const extra = (D.extraVideos || []).find((v) => v.id === id);
+    if (extra) return { video: extra, prev: null, next: null, module: null };
+    return null;
+  }
+
+  function currentLessonId() {
+    const h = location.hash.replace("#", "");
+    return h.startsWith("lesson-") ? h.slice(7) : null;
+  }
+
+  /* ---------------- YouTube IFrame Player API（自動視聴検知） ---------------- */
+  const youtubeVideoId = (url) => {
+    const m = String(url || "").match(/(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{6,})/);
+    return m ? m[1] : null;
+  };
+  let ytApiPromise = null;
+  function loadYouTubeApi() {
+    if (ytApiPromise) return ytApiPromise;
+    ytApiPromise = new Promise((resolve) => {
+      if (window.YT && window.YT.Player) { resolve(window.YT); return; }
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (prev) prev(); resolve(window.YT); };
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+    });
+    return ytApiPromise;
+  }
+  let ytPlayer = null, ytProgressTimer = null;
+  let mountedLessonId = null;
+  function destroyYtPlayer() {
+    clearInterval(ytProgressTimer);
+    ytProgressTimer = null;
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
+  }
+  function markLessonWatchedAuto(id) {
+    if (progress.watched[id]) return;
+    progress.watched[id] = true;
+    render(); applyActive(); scheduleSave();
+    toast("自動視聴検知：視聴済みにしました");
+  }
+  function mountYouTubePlayer(v) {
+    destroyYtPlayer();
+    const vid = youtubeVideoId(v.url);
+    const elId = "ytplayer-" + v.id;
+    if (!vid || !document.getElementById(elId)) return;
+    loadYouTubeApi().then((YT) => {
+      if (!document.getElementById(elId)) return; // ページ遷移済み
+      ytPlayer = new YT.Player(elId, {
+        videoId: vid,
+        playerVars: { rel: 0 },
+        events: {
+          onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) markLessonWatchedAuto(v.id); },
+          onReady: () => {
+            ytProgressTimer = setInterval(() => {
+              if (!ytPlayer || typeof ytPlayer.getDuration !== "function") return;
+              const dur = ytPlayer.getDuration(), cur = ytPlayer.getCurrentTime();
+              if (dur > 0 && cur / dur >= 0.9) markLessonWatchedAuto(v.id);
+            }, 3000);
+          },
+        },
+      });
+    });
+  }
+
+  function renderLesson(id) {
+    const ctx = findVideoContext(id);
+    if (!ctx) {
+      return `<a class="btn ghost sm" data-nav="curriculum">${icon("chevron", "icn-sm")} 動画レッスンへ戻る</a>
+        <div class="card" style="margin-top:12px"><div class="empty">このレッスンは見つかりませんでした。</div></div>`;
+    }
+    const { video: v, module: m, prev, next } = ctx;
+    const w = isWatched(v.id);
+    const ytId = youtubeVideoId(v.url);
+    const player = ytId
+      ? `<div class="lesson-player" id="ytplayer-${v.id}"></div>`
+      : v.url
+      ? `<div class="lesson-player"><iframe src="${v.url}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
+      : `<div class="lesson-player ph"><div class="pic">${icon("video")}</div><div>この動画はまだ準備中です</div></div>`;
+    const summaryHtml = m ? `
+      <div class="sec-title"><h3>この章のサマリー</h3></div>
+      <div class="card pad-sm">
+        <div style="font-size:13px"><b>ゴール：</b>${esc(m.goal)}</div>
+        <div style="font-size:13px;margin-top:6px"><b>成果物：</b>${esc(m.deliverable)}</div>
+      </div>
+      <div class="sec-title"><h3>宿題提出</h3></div>
+      ${moduleSubmissionHtml(m.id)}` : "";
+    const navHtml = (prev || next) ? `<div class="lesson-nav">
+        ${prev ? `<button class="btn ghost sm" data-nav-lesson="${prev.id}">${icon("chevron", "icn-sm")} 前の動画</button>` : "<span></span>"}
+        ${next ? `<button class="btn sm" data-nav-lesson="${next.id}">次の動画 ${icon("arrow", "icn-sm")}</button>` : "<span></span>"}
+      </div>` : "";
+    return `<a class="btn ghost sm" data-nav="curriculum">${icon("chevron", "icn-sm")} 動画レッスンへ戻る</a>
+      <div class="card lesson-head" style="margin-top:10px">
+        ${m ? `<div class="lesson-badge">${esc(m.badge)}</div>` : ""}
+        <h2 class="lesson-title">${esc(v.title)}</h2>
+        <div class="lesson-meta">${v.type ? `<span class="vtype ${v.type}">${typeLabel[v.type]}</span>` : ""} ${v.min ? v.min + "分" : ""}</div>
+      </div>
+      ${player}
+      <div class="card" style="margin-top:14px">
+        <button class="btn ${w ? "ghost" : ""}" data-watch-lesson="${v.id}">${w ? "視聴済み（取り消す）" : "視聴済みにする"}</button>
+      </div>
+      ${summaryHtml}
+      ${navHtml}`;
   }
 
   /* ================= ロードマップ ================= */
@@ -410,11 +513,21 @@
     return `<div class="note" style="margin-bottom:10px">${esc(D.guarantee.note)}</div><div class="tasklist">${gHtml}</div>`;
   }
 
+  const weekHoursSum = () => {
+    const wk = weekStartKey(TODAY);
+    return reports
+      .filter((r) => r.hours != null && r.date && weekStartKey(parse(r.date)) === wk)
+      .reduce((sum, r) => sum + Number(r.hours), 0);
+  };
+
   function renderCommunity() {
     const streak = reportStreak(), recent = reports.slice(0, 3);
-    const linkBtn = (url, label, ic) => url
-      ? `<a class="btn ghost sm" href="${url}" target="_blank">${icon(ic, "icn-sm")} ${label}</a>`
-      : `<button class="btn ghost sm" data-noop title="data.js の links に URL を設定してください">${icon(ic, "icn-sm")} ${label}（未設定）</button>`;
+    const latestWeekly = weeklyReports[0] || null;
+    const dashboardHtml = `<div class="dash-grid">
+      <div class="card stat-card"><div class="stat-label">今週の学習時間</div><div class="stat-num">${weekHoursSum()}<small>時間</small></div></div>
+      <div class="card stat-card"><div class="stat-label">現在の案件</div><div class="stat-text">${latestWeekly && latestWeekly.deals_text ? esc(latestWeekly.deals_text) : "まだ記録がありません"}</div></div>
+      <div class="card stat-card"><div class="stat-label">売上高（直近週）</div><div class="stat-num sm">${latestWeekly ? yen(latestWeekly.sales_amount) : "—"}</div></div>
+    </div>`;
     const recentHtml = recent.length ? recent.map((r) => `<div class="card pad-sm" style="margin-bottom:10px">
         <div style="font-size:12px;color:var(--faint);font-weight:700;margin-bottom:5px">${r.date}</div>
         <div style="font-size:13px"><b>やった：</b>${esc(r.did || "—")}</div><div style="font-size:13px"><b>詰まり：</b>${esc(r.stuck || "—")}</div>
@@ -437,8 +550,8 @@
       ${r.note ? `<div style="font-size:13px;color:var(--muted)"><b>所感：</b>${esc(r.note)}</div>` : ""}
     </div>`).join("") : `<div class="empty">まだ週報がありません。面談前の整理に使ってください。</div>`;
     const weekGuide = TODAY.getDay() === 6 ? "明日の面談に向けて、今週の売上・案件状況を整理しましょう。" : "週報は土曜を目安に書きます。面談前以外でも、いつでも保存できます。";
-    return `<div class="card" style="margin-bottom:18px"><div class="card-head"><h4>コミュニティ（LINE中心）</h4></div>
-        <div class="linkrow">${linkBtn(D.links.line, "公式LINEを開く", "chat")}${linkBtn(D.links.dashboard, "進捗ダッシュボード", "trending")}${linkBtn(D.links.zoom, "ライブ用Zoom", "video")}</div></div>
+    return `<div class="sec-title"><h3>進捗ダッシュボード</h3></div>
+      ${dashboardHtml}
       <div class="sec-title"><h3>今日の日報（3行＋Win）</h3></div>
       <div class="card report">
         <div class="streak"><div class="sbig">${icon("flame", "icn")}<span class="num">${streak}</span></div><div><div style="font-weight:800">日連続ストリーク</div><div class="note">締切は毎日23:59。毎日の進捗を短く残しましょう。</div></div></div>
@@ -471,10 +584,9 @@
   function renderResources() {
     const tpl = D.templates.map((t) => `<a class="res" ${t.link ? `href="${t.link}" target="_blank"` : "data-noop"}><div class="itile t-green">${icon(t.icon)}</div><div><div class="rt">${esc(t.title)}</div><div class="rd">${esc(t.desc)}</div></div><div class="arrow">${t.link ? icon("arrow", "icn-sm") : ""}</div></a>`).join("");
     const rescueHtml = D.rescue.map((r) => `<a class="res" ${r.url ? `href="${r.url}" target="_blank"` : "data-noop"}><div class="itile t-rose">${icon(r.icon)}</div><div><div class="rt">${esc(r.title)}</div><div class="rd">${esc(r.desc)}</div></div></a>`).join("");
-    return `<div class="sec-title"><h3>困ったらこの3本（レスキュー動線）</h3></div><div class="rescue">${rescueHtml}</div>
+    return `<div class="sec-title"><h3>困ったときに見る</h3></div><div class="rescue">${rescueHtml}</div>
       <div class="sec-title"><h3>テンプレ集</h3></div><div class="rgrid">${tpl}</div>
-      <div class="sec-title"><h3>リンク</h3></div>
-      <div class="card"><a class="res" href="${D.links.notion}" target="_blank" style="box-shadow:none;border:none;padding:8px"><div class="itile t-slate">${icon("book")}</div><div><div class="rt">スクール全体設計（Notion）</div><div class="rd">設計の原本。最新の方針はこちら</div></div><div class="arrow">${icon("arrow", "icn-sm")}</div></a><div class="note" style="margin-top:6px">テンプレやレスキュー動画のURLは <code>assets/data.js</code> で設定できます。</div></div>`;
+      <div class="note" style="margin-top:6px">テンプレや「困ったときに見る」動画のURLは <code>assets/data.js</code> で設定できます。</div>`;
   }
 
   function renderAccountBody() {
@@ -550,6 +662,28 @@
     resources: { title: "リソース", render: renderResources },
   };
 
+  function updateLessonWatchBtn(id) {
+    const btn = document.querySelector("#view-lesson [data-watch-lesson]");
+    if (!btn) return;
+    const w = isWatched(id);
+    btn.textContent = w ? "視聴済み（取り消す）" : "視聴済みにする";
+    btn.className = w ? "btn ghost" : "btn";
+  }
+
+  function syncLessonPane() {
+    const lessonId = currentLessonId();
+    const pane = document.getElementById("view-lesson");
+    if (!lessonId) { pane.innerHTML = ""; mountedLessonId = null; destroyYtPlayer(); return; }
+    if (lessonId === mountedLessonId && pane.querySelector("[data-watch-lesson]")) {
+      updateLessonWatchBtn(lessonId);
+      return;
+    }
+    mountedLessonId = lessonId;
+    pane.innerHTML = renderLesson(lessonId);
+    const ctx = findVideoContext(lessonId);
+    if (ctx && youtubeVideoId(ctx.video.url)) mountYouTubePlayer(ctx.video); else destroyYtPlayer();
+  }
+
   function render() {
     destroyCharts();
     for (const id in VIEWS) document.getElementById("view-" + id).innerHTML = VIEWS[id].render();
@@ -565,10 +699,13 @@
     setTimeout(renderCharts, 0);
   }
   function applyActive() {
+    const lessonId = currentLessonId();
     const v = location.hash.replace("#", "") || "home";
     const view = VIEWS[v] ? v : "home";
-    for (const id in VIEWS) document.getElementById("view-" + id).classList.toggle("active", id === view);
-    document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.view === view));
+    syncLessonPane();
+    for (const id in VIEWS) document.getElementById("view-" + id).classList.toggle("active", !lessonId && id === view);
+    document.getElementById("view-lesson").classList.toggle("active", !!lessonId);
+    document.querySelectorAll("#nav a").forEach((a) => a.classList.toggle("active", a.dataset.view === (lessonId ? "curriculum" : view)));
     setTimeout(renderCharts, 0);
   }
   function route() { applyActive(); document.getElementById("app").classList.remove("menu-open"); window.scrollTo(0, 0); }
@@ -578,31 +715,9 @@
   function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(() => { if (uid) DB.saveProgress(uid, progress); }, 700); }
   function refresh() { render(); applyActive(); scheduleSave(); }
 
-  /* ================= 動画モーダル ================= */
-  let currentVid = null;
-  function openVideo(id) {
-    const v = allVideos().find((x) => x.id === id);
-    if (!v) return;
-    currentVid = v;
-    const m = moduleById(v.moduleId);
-    document.getElementById("modalTitle").textContent = `${m.badge}｜${v.title}`;
-    const frame = document.getElementById("modalFrame");
-    frame.innerHTML = v.url
-      ? `<iframe src="${v.url}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`
-      : `<div class="ph"><div class="pic">${icon("video")}</div><div>この動画はまだ準備中です</div><div class="note" style="color:#9fb4af">data.js の <b>${v.id}</b> に動画URLを設定すると、ここで再生できます。</div></div>`;
-    document.getElementById("modalNote").textContent = `${typeLabel[v.type]}・${v.min}分`;
-    updateModalBtn();
-    document.getElementById("modal").classList.add("open");
-  }
-  function updateModalBtn() {
-    const b = document.getElementById("modalDone"), w = currentVid && isWatched(currentVid.id);
-    b.textContent = w ? "視聴済み（取り消す）" : "視聴済みにする";
-    b.className = w ? "btn ghost" : "btn";
-  }
-  function closeModal() { document.getElementById("modal").classList.remove("open"); document.getElementById("modalFrame").innerHTML = ""; currentVid = null; }
   function openAccountModal() { document.getElementById("accountModal").classList.add("open"); }
   function closeAccountModal() { document.getElementById("accountModal").classList.remove("open"); }
-  function closeAllModals() { closeModal(); closeAccountModal(); }
+  function closeAllModals() { closeAccountModal(); }
 
   /* ================= トースト ================= */
   let toastT;
@@ -646,7 +761,7 @@
     document.body.classList.add("authed");
     render(); route();
   }
-  function showLogin() { document.body.classList.remove("authed"); setTimeout(() => document.getElementById("li-no").focus(), 50); }
+  function showLogin() { document.body.classList.remove("authed"); mountedLessonId = null; destroyYtPlayer(); setTimeout(() => document.getElementById("li-no").focus(), 50); }
 
   async function doLogin(e) {
     e.preventDefault();
@@ -676,12 +791,15 @@
     document.getElementById("studentChip").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openAccountModal(); } });
 
     document.body.addEventListener("click", async (e) => {
-      const t = e.target.closest("[data-watch],[data-open-video],[data-toggle-module],[data-task],[data-daily],[data-guarantee],[data-nav],[data-close],[data-noop],[data-book],[data-cancel],[data-submit-module]");
+      const t = e.target.closest("[data-watch],[data-open-video],[data-toggle-module],[data-task],[data-daily],[data-guarantee],[data-nav],[data-close],[data-noop],[data-book],[data-cancel],[data-submit-module],[data-curtab],[data-watch-lesson],[data-nav-lesson]");
       if (t) {
         if (t.dataset.noop !== undefined) { e.preventDefault(); return; }
         if (t.dataset.close !== undefined) { closeAllModals(); return; }
         if (t.dataset.nav) { e.preventDefault(); location.hash = t.dataset.nav; return; }
-        if (t.dataset.openVideo) { e.preventDefault(); openVideo(t.dataset.openVideo); return; }
+        if (t.dataset.openVideo) { e.preventDefault(); location.hash = "lesson-" + t.dataset.openVideo; return; }
+        if (t.dataset.curtab) { curTab = t.dataset.curtab; render(); applyActive(); return; }
+        if (t.dataset.watchLesson) { progress.watched[t.dataset.watchLesson] = !progress.watched[t.dataset.watchLesson]; refresh(); return; }
+        if (t.dataset.navLesson) { e.preventDefault(); location.hash = "lesson-" + t.dataset.navLesson; return; }
         if (t.dataset.book) { e.preventDefault(); bookSeminar(t.dataset.book); return; }
         if (t.dataset.cancel) { e.preventDefault(); cancelSeminar(t.dataset.cancel); return; }
         if (t.dataset.submitModule) {
@@ -695,6 +813,7 @@
           if (error) { toast("提出に失敗しました"); t.disabled = false; return; }
           const { data } = await DB.getSubmissions(uid);
           submissions = data || [];
+          mountedLessonId = null;
           render(); applyActive(); toast("宿題を提出しました");
           return;
         }
@@ -737,12 +856,6 @@
       }
     });
 
-    document.getElementById("modalDone").addEventListener("click", () => {
-      if (!currentVid) return;
-      progress.watched[currentVid.id] = !progress.watched[currentVid.id];
-      render(); applyActive(); scheduleSave(); updateModalBtn();
-      toast(isWatched(currentVid.id) ? "視聴済みにしました" : "視聴済みを取り消しました");
-    });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAllModals(); });
   }
 
