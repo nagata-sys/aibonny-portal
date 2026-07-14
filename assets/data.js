@@ -27,6 +27,18 @@ const AIBONNY = {
     notion: "https://app.notion.com/p/AIBONNY-37f75b94082c81a99be9f807500078cf",
   },
 
+  /* ---------------- デモデータ（表示専用・DBには保存されない） ---------------- */
+  /* Supabase移行が未適用の間、進捗グラフをプレビューするための表示専用データ。
+   * DBには保存されない。本番運用開始時は enabled: false にする */
+  demo: {
+    enabled: true,  // 本番運用開始時に false にするとデモ補完が全て無効になる
+    weeklyReports: [
+      { weeksAgo: 3, sales_amount: 0, deals_text: "既存顧客A社にAI業務効率化を無料提案。まず効果を見せる方針", sales_activity_count: 1, note: "無料導入の範囲と期限を決めて提案した" },
+      { weeksAgo: 2, sales_amount: 30000, deals_text: "A社の無料導入で削減効果が出始める／B社から問い合わせ1件", sales_activity_count: 2, note: "Before/Afterの数字が揃ってきた" },
+      { weeksAgo: 1, sales_amount: 50000, deals_text: "A社: 月3万円で有償化決定／新規C社と商談中（見積提出済み）", sales_activity_count: 3, note: "初の有償化。ROIの数字を見せたのが効いた" },
+    ],
+  },
+
   /* ---------------- 3つのゲート（最終収束先） ---------------- */
   gates: [
     { id: "g1", label: "ゲート①", title: "内製化完成：自分の業務をAIで代替できる状態", target: "〜W4", moduleId: 9 },

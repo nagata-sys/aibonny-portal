@@ -49,6 +49,7 @@
   let seminars = [];
   let myBookings = new Set();
   let chartInstances = [];
+  let demoActive = false;
 
   /* ---------------- 日付ヘルパー ---------------- */
   const DOW = ["日", "月", "火", "水", "木", "金", "土"];
@@ -76,6 +77,36 @@
     return raw.includes("万") ? n * 10000 : n;
   };
   const yen = (v) => v == null || v === "" ? "未入力" : Number(v).toLocaleString("ja-JP") + "円";
+
+  /* ---------------- デモデータ補完（表示専用・DBには保存しない） ---------------- */
+  /* Supabase側に reports.hours / weekly_reports がまだ無い期間、
+   * グラフ・ダッシュボードをプレビューできるようメモリ上の reports / weeklyReports だけを補う。
+   * DB.save系は一切呼ばない。D.demo.enabled=false で即無効化できる。                        */
+  function applyDemoData() {
+    demoActive = false;
+    if (!D.demo || !D.demo.enabled) return;
+    reports.forEach((r) => {
+      if (r.hours == null) {
+        let h = 0;
+        const s = String(r.date || "");
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        r.hours = 1 + (h % 6) * 0.5;
+        r.demo = true;
+        demoActive = true;
+      }
+    });
+    if (weeklyReports.length === 0 && D.demo.weeklyReports && D.demo.weeklyReports.length) {
+      weeklyReports = D.demo.weeklyReports.map((w) => ({
+        week_start: keyOf(addDays(parse(weekStartKey(TODAY)), -7 * w.weeksAgo)),
+        sales_amount: w.sales_amount,
+        deals_text: w.deals_text,
+        sales_activity_count: w.sales_activity_count,
+        note: w.note,
+        demo: true,
+      })).sort((a, b) => b.week_start.localeCompare(a.week_start));
+      demoActive = true;
+    }
+  }
 
   /* ---------------- 進捗計算 ---------------- */
   const allVideos = () => D.modules.flatMap((m) => m.videos.map((v) => ({ ...v, moduleId: m.id })));
@@ -562,6 +593,7 @@
     const weekGuide = TODAY.getDay() === 6 ? "明日の面談に向けて、今週の売上・案件状況を整理しましょう。" : "週報は土曜を目安に書きます。面談前以外でも、いつでも保存できます。";
     return `<div class="sec-title"><h3>進捗ダッシュボード</h3></div>
       ${dashboardHtml}
+      ${demoActive ? `<div class="note">一部はデモデータです（本番データ連携は準備中）。</div>` : ""}
       <div class="sec-title"><h3>今日の日報（3行＋Win）</h3></div>
       <div class="card report">
         <div class="streak"><div class="sbig">${icon("flame", "icn")}<span class="num">${streak}</span></div><div><div style="font-weight:800">日連続ストリーク</div><div class="note">締切は毎日23:59。毎日の進捗を短く残しましょう。</div></div></div>
@@ -580,7 +612,7 @@
         <div class="fld"><label>所感 <small>（任意）</small></label><textarea id="w-note" rows="2" placeholder="例: 価格提示の反応がよかった。来週は提案書を1本仕上げる"></textarea></div>
         <div class="linkrow"><button class="btn" id="saveWeeklyReport">週報を保存</button><span class="note">対象週: ${weekStartKey(TODAY)} 開始</span></div>
       </div>
-      <div class="sec-title"><h3>進捗の可視化</h3></div>
+      <div class="sec-title"><h3>進捗の可視化</h3>${demoActive ? `<span class="pill gray">デモデータ表示中</span>` : ""}</div>
       <div class="row2 even">
         <div class="card chart-card"><div class="card-head"><h4>稼働時間の推移</h4></div><div id="hoursEmpty" class="empty" style="display:none">稼働時間つきの日報がまだありません。</div><canvas id="hoursChart" height="180"></canvas></div>
         <div class="card chart-card"><div class="card-head"><h4>売上推移</h4></div><div id="salesEmpty" class="empty" style="display:none">売上つきの週報がまだありません。</div><canvas id="salesChart" height="180"></canvas></div>
@@ -764,6 +796,7 @@
     progress = Object.assign({ watched: {}, tasks: {}, daily: {}, guarantee: {} }, (prog.data && prog.data.data) || {});
     reports = (reps.data || []).map((r) => ({ date: r.report_date, did: r.did, stuck: r.stuck, next: r.next, win: r.win, hours: r.hours }));
     weeklyReports = weekly.data || [];
+    applyDemoData();
     submissions = subs.data || [];
     seminars = sems.data || [];
     myBookings = new Set((books.data || []).map((b) => b.seminar_id));
@@ -842,6 +875,7 @@
         if (error) { toast("保存に失敗しました"); btn.disabled = false; return; }
         const { data } = await DB.getReports(uid);
         reports = (data || []).map((x) => ({ date: x.report_date, did: x.did, stuck: x.stuck, next: x.next, win: x.win, hours: x.hours }));
+        applyDemoData();
         render(); applyActive(); toast("日報を保存しました");
       }
       if (e.target.closest("#saveWeeklyReport")) {
@@ -858,6 +892,7 @@
         if (error) { toast("週報の保存に失敗しました"); btn.disabled = false; return; }
         const { data } = await DB.getWeeklyReports(uid);
         weeklyReports = data || [];
+        applyDemoData();
         render(); applyActive(); toast("週報を保存しました");
       }
       if (e.target.closest("#copyReport")) {
