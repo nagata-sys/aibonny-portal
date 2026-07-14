@@ -16,7 +16,7 @@ const AIBONNY = {
     name: "受講生",          // 受講生のお名前（ホームに表示）
     cohort: "1期（ファウンディングメンバー）",
     startDate: "2026-06-19", // 開講日（この日からW1。直近の予定の日付計算に使用）
-    plan: "個別伴走プラン（3ヶ月・全12回）",
+    plan: "スクール0期（2ヶ月講義＋4ヶ月実践）",
   },
 
   /* ---------------- 公式リンク（差し替え推奨） ---------------- */
@@ -29,174 +29,217 @@ const AIBONNY = {
 
   /* ---------------- 3つのゲート（最終収束先） ---------------- */
   gates: [
-    { id: "g1", label: "ゲート①", title: "本番稼働する自分専用AIシステムを1つ完成", target: "〜Week8", moduleId: 4 },
-    { id: "g2", label: "ゲート②", title: "ROIで語れる提案書を1本", target: "〜Week10", moduleId: 5 },
-    { id: "g3", label: "ゲート③", title: "有償案件を受注 or 月10万円相当の効果", target: "〜Week12", moduleId: 6 },
+    { id: "g1", label: "ゲート①", title: "内製化完成：自分の業務をAIで代替できる状態", target: "〜W4", moduleId: 9 },
+    { id: "g2", label: "ゲート②", title: "提案書・営業導線を完成", target: "〜W6", moduleId: 13 },
+    { id: "g3", label: "ゲート③", title: "無料導入→有償化で受注", target: "〜W8", moduleId: 16 },
   ],
 
-  /* ---------------- 動画モジュール（8） ---------------- */
-  /* type: concept=概念 / hands=操作 / qa=つまずきQ&A / goal=ゴール宣言   */
+  /* ---------------- 動画モジュール（L01〜L16） ---------------- */
+  /* type: concept=概念 / hands=操作                                    */
+  /* ★ L01〜L07 の module.id / video.id は 101〜107 系に採番しています。
+   *   理由: 旧カリキュラム（Module1〜7, 動画ID "1-1"〜"7-1"）と番号が衝突すると、
+   *   旧カリキュラムを視聴済み/提出済みだった既存受講生に、内容が全く別の
+   *   新L01〜L07が「視聴済み」「提出済み」として誤表示されてしまうため。   */
   modules: [
     {
-      id: 0, badge: "Module 0", title: "着地点設計（北極星）",
-      goal: "誰の課題をROIいくらで解く案件で受注するかを1枚で言語化する",
-      deliverable: "マイゴール×ターゲット案件シート＋13ステップ進捗マップ",
+      id: 101, badge: "L01", week: "W1", title: "Claude Codeの初期セットアップ（インストールと基本操作）",
+      goal: "インストールからアカウント作成、初回起動から最初の対話まで。入会直後に技術的な手応えを得る最初の1本",
+      deliverable: "Claude Codeをセットアップし、最初の対話で自己紹介.mdを作成する",
       gate: null,
       videos: [
-        { id: "0-1", title: "オリエン: 3ヶ月で“稼げる状態”までの地図", min: 8, type: "concept", url: "" },
-        { id: "0-2", title: "北極星の決め方 — 誰の/どんな課題を/ROIいくらで", min: 10, type: "concept", url: "" },
-        { id: "0-3", title: "ターゲット案件シートの書き方（実演）", min: 9, type: "hands", url: "" },
-        { id: "0-4", title: "13ステップ進捗マップの使い方", min: 7, type: "hands", url: "" },
-        { id: "0-Q", title: "つまずきQ&A: 案件が思いつかないとき", min: 6, type: "qa", url: "" },
-        { id: "0-G", title: "1分ゴール宣言: Module0完了の状態", min: 1, type: "goal", url: "" },
+        { id: "101-1", title: "Claude Codeの初期セットアップ（インストールと基本操作）", min: 20, type: "hands", url: "" },
       ],
     },
     {
-      id: 1, badge: "Module 1", title: "AI地力（最小限）",
-      goal: "業務を棚卸しし、自動化候補をROI順に特定する",
-      deliverable: "自動化候補リスト（ROI上位3件）＋プロンプト集",
+      id: 102, badge: "L02", week: "W1", title: "将来を本気で考えるワーク（Claude Code活用）",
+      goal: "自分の限界を問い直し、6ヶ月目標と事業の現状数値（月商・客数・客単価・稼働時間）を言語化する",
+      deliverable: "6ヶ月目標シート＋事業の現状シートを.mdで完成させ、オリエンテーション面談に持参",
       gate: null,
       videos: [
-        { id: "1-1", title: "AI時代の生き方と“AIの地力”", min: 11, type: "concept", url: "" },
-        { id: "1-2", title: "業務棚卸しの実演 — 自動化候補をROI順に", min: 10, type: "hands", url: "" },
-        { id: "1-3", title: "そのまま使えるプロンプト集の使い方", min: 8, type: "hands", url: "" },
-        { id: "1-4", title: "ROI上位3件の選び方", min: 7, type: "hands", url: "" },
-        { id: "1-Q", title: "つまずきQ&A: 棚卸しが進まない", min: 6, type: "qa", url: "" },
-        { id: "1-G", title: "1分ゴール宣言: Module1完了の状態", min: 1, type: "goal", url: "" },
+        { id: "102-1", title: "将来を本気で考えるワーク（Claude Code活用）", min: 90, type: "concept", url: "" },
       ],
     },
     {
-      id: 2, badge: "Module 2", title: "カスタムAI（最初の動く成果物）",
-      goal: "GPTs/Gemで業務に効くAIを1つ完成・デモ化する",
-      deliverable: "マイカスタムAI＋1分デモ台本",
+      id: 103, badge: "L03", week: "W1", title: "AI概論：LLMの違いとAI活用の4step",
+      goal: "ChatGPT・Claude・Geminiの違い・強み弱みとAI活用の4step。正解探しではなく仮説検証で動く姿勢を身につける",
+      deliverable: "自分の事業の課題を3つのLLMに投げて比較メモを作る（業務ログ開始）",
       gate: null,
       videos: [
-        { id: "2-1", title: "GPTs / Gem の基礎", min: 9, type: "concept", url: "" },
-        { id: "2-2", title: "業務に効くカスタムAIを作る（実演）", min: 12, type: "hands", url: "" },
-        { id: "2-3", title: "1分デモ台本の作り方", min: 8, type: "hands", url: "" },
-        { id: "2-4", title: "デモを“見せられる”形にする", min: 7, type: "hands", url: "" },
-        { id: "2-Q", title: "つまずきQ&A: 思った精度が出ない", min: 6, type: "qa", url: "" },
-        { id: "2-G", title: "1分ゴール宣言: Module2完了の状態", min: 1, type: "goal", url: "" },
+        { id: "103-1", title: "AI概論：LLMの違いとAI活用の4step", min: 60, type: "concept", url: "" },
       ],
     },
     {
-      id: 3, badge: "Module 3", title: "n8n土台（真似れば動く）",
-      goal: "環境構築から最小ワークフロー1本を稼働させる",
-      deliverable: "構築済み環境＋最小ワークフロー",
+      id: 104, badge: "L04", week: "W2", title: "Claude Code講義①：基本操作と.mdファイル",
+      goal: "ファイルを読ませて指示する基本操作と、.mdファイルでの情報整理。目標シートを.md化して将来設計を壁打ちする",
+      deliverable: "目標シートv2（Claude Codeとの壁打ちで更新版）を作る",
       gate: null,
       videos: [
-        { id: "3-1", title: "n8nとは / 環境構築", min: 10, type: "hands", url: "" },
-        { id: "3-2", title: "最小ワークフロー1本を真似て動かす", min: 12, type: "hands", url: "" },
-        { id: "3-3", title: "ノードの基本とデバッグ", min: 9, type: "hands", url: "" },
-        { id: "3-4", title: "認証・APIキーの安全な扱い", min: 8, type: "hands", url: "" },
-        { id: "3-Q", title: "つまずきQ&A: 環境が壊れた / 動かない", min: 7, type: "qa", url: "" },
-        { id: "3-G", title: "1分ゴール宣言: Module3完了の状態", min: 1, type: "goal", url: "" },
+        { id: "104-1", title: "Claude Code講義①：基本操作と.mdファイル", min: 20, type: "hands", url: "" },
       ],
     },
     {
-      id: 4, badge: "Module 4", title: "【ゲート①】本番システム完成",
-      goal: "自分専用の自動化を本番稼働させる（Claude MCP連携）",
-      deliverable: "本番稼働ワークフロー＋要件定義書＋運用手順書（＝納品ドキュメント）",
+      id: 105, badge: "L05", week: "W2", title: "Claude Code講義②：Skillsの読み込み方",
+      goal: "Skillsの導入・読み込み方と、自分の定型業務のSkill化",
+      deliverable: "自分の定型業務をSkill化して1つ動かす",
+      gate: null,
+      videos: [
+        { id: "105-1", title: "Claude Code講義②：Skillsの読み込み方", min: 20, type: "hands", url: "" },
+      ],
+    },
+    {
+      id: 106, badge: "L06", week: "W3", title: "Claude Code講義③：MCPの使い方（Google系サービス）",
+      goal: "MCPの繋ぎ方と実践。Google Drive・スプレッドシート・Gmail・Notion連携で日報・請求まわりを効率化",
+      deliverable: "自分の事業にMCPを1つ繋いで動かす",
+      gate: null,
+      videos: [
+        { id: "106-1", title: "Claude Code講義③：MCPの使い方（Google系サービス）", min: 20, type: "hands", url: "" },
+      ],
+    },
+    {
+      id: 107, badge: "L07", week: "W3", title: "Claude Code講義④：ウェブサイト・アプリの作り方",
+      goal: "LP・サービスサイト・フォーム付きページの制作。業務効率化とクライアント提案の上級編",
+      deliverable: "自分の事業のLPまたは業務用ミニアプリを1つ作る",
+      gate: null,
+      videos: [
+        { id: "107-1", title: "Claude Code講義④：ウェブサイト・アプリの作り方", min: 20, type: "hands", url: "" },
+      ],
+    },
+    {
+      id: 8, badge: "L08", week: "W3〜W4", title: "自身の業務の棚卸し・ワーク",
+      goal: "業務を入力・判断・出力の単位に分解し、「自分の事業に効く」×「顧客に売れそう」の2軸で内製化テーマを選定",
+      deliverable: "業務棚卸しシート50件以上＋内製化テーマ1〜3個を決定",
+      gate: null,
+      videos: [
+        { id: "8-1", title: "自身の業務の棚卸し・ワーク", min: 20, type: "hands", url: "" },
+      ],
+    },
+    {
+      id: 9, badge: "L09", week: "W4", title: "内製化の完成と効果測定",
+      goal: "Before/After測定・削減時間の記録・手順書化・ROIメモ。AIで回る自分の事業がそのまま商品デモになる",
+      deliverable: "内製化成果物＋手順書＋ROIメモを完成",
       gate: "g1",
       videos: [
-        { id: "4-1", title: "本番要件定義の作り方", min: 10, type: "concept", url: "" },
-        { id: "4-2", title: "Claude MCP連携の実装", min: 12, type: "hands", url: "" },
-        { id: "4-3", title: "本番稼働ワークフローを構築する", min: 12, type: "hands", url: "" },
-        { id: "4-4", title: "運用手順書＝そのまま納品ドキュメント", min: 9, type: "hands", url: "" },
-        { id: "4-5", title: "エラー処理と監視の入れ方", min: 8, type: "hands", url: "" },
-        { id: "4-Q", title: "つまずきQ&A: 本番で落ちる", min: 7, type: "qa", url: "" },
-        { id: "4-G", title: "ゲート①宣言: 本番システム完成", min: 1, type: "goal", url: "" },
+        { id: "9-1", title: "内製化の完成と効果測定", min: 20, type: "hands", url: "" },
       ],
     },
     {
-      id: 5, badge: "Module 5", title: "【ゲート②】ROI提案に変換",
-      goal: "成果物を「誰の課題×ROIいくら」の提案書にする",
-      deliverable: "提案書1本＋ROI試算＋実績デモ資料",
-      gate: "g2",
-      videos: [
-        { id: "5-1", title: "提案書の構造 — 誰の課題×ROIいくら", min: 10, type: "concept", url: "" },
-        { id: "5-2", title: "ROI試算の作り方", min: 9, type: "hands", url: "" },
-        { id: "5-3", title: "実績デモ資料に仕立てる", min: 8, type: "hands", url: "" },
-        { id: "5-4", title: "提案書テンプレートの埋め方", min: 7, type: "hands", url: "" },
-        { id: "5-Q", title: "つまずきQ&A: 価格が決められない", min: 6, type: "qa", url: "" },
-        { id: "5-G", title: "ゲート②宣言: 提案書1本完成", min: 1, type: "goal", url: "" },
-      ],
-    },
-    {
-      id: 6, badge: "Module 6", title: "【ゲート③】受注を取りに行く",
-      goal: "営業アクションを実行し、有償案件 or 月10万円相当へ",
-      deliverable: "営業記録＋受注 / 効果の証明",
-      gate: "g3",
-      videos: [
-        { id: "6-1", title: "営業アクション設計 — 無料提供→有償", min: 10, type: "concept", url: "" },
-        { id: "6-2", title: "アプローチ先リストの作り方", min: 8, type: "hands", url: "" },
-        { id: "6-3", title: "ROI営業ロールプレイの型", min: 11, type: "hands", url: "" },
-        { id: "6-4", title: "クロージングと見積もり", min: 9, type: "hands", url: "" },
-        { id: "6-Q", title: "つまずきQ&A: 手が止まった / 断られた", min: 7, type: "qa", url: "" },
-        { id: "6-G", title: "ゲート③宣言: 受注 or 月10万円相当", min: 1, type: "goal", url: "" },
-      ],
-    },
-    {
-      id: 7, badge: "Module 7", title: "自走フェーズの非同期運用",
-      goal: "2件目以降を自力で回す",
-      deliverable: "自走計画シート",
+      id: 10, badge: "L10", week: "W5", title: "ROIの提案",
+      goal: "既存の人件費・工数をいくら削減するかというROI起点の価格設定・提案の型を実例で学ぶ",
+      deliverable: "自分の内製化実績を同じ型で1枚にまとめる",
       gate: null,
       videos: [
-        { id: "7-1", title: "2件目以降を自力で回す仕組み", min: 9, type: "concept", url: "" },
-        { id: "7-2", title: "自走計画シートの作り方", min: 8, type: "hands", url: "" },
-        { id: "7-3", title: "非同期での質問の解決術", min: 7, type: "hands", url: "" },
-        { id: "7-G", title: "卒業宣言: 自走フェーズへ", min: 1, type: "goal", url: "" },
+        { id: "10-1", title: "ROIの提案", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 11, badge: "L11", week: "W5", title: "既存サービスの代替提案と商品化",
+      goal: "クライアントが今払っているコストより安く同等以上の品質を出す提案。相場比較表とクロスセル設計",
+      deliverable: "代替提案できるサービス案3つ＋価格比較表＋既存顧客に出せる新メニュー案",
+      gate: null,
+      videos: [
+        { id: "11-1", title: "既存サービスの代替提案と商品化", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 12, badge: "L12", week: "W6", title: "無料導入→有償化のステップ",
+      goal: "無料で信頼を得て、効果を感じてもらってから報酬化。導入先はまず既存顧客から。無料の範囲・期限の決め方",
+      deliverable: "既存顧客・SNSから無料導入先の候補リスト10件",
+      gate: null,
+      videos: [
+        { id: "12-1", title: "無料導入→有償化のステップ", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 13, badge: "L13", week: "W6", title: "提案書・営業文面とSNS販路",
+      goal: "1ページ提案書・DM・紹介依頼文。SNS発信で事例を見せて引き合いを作る導線設計",
+      deliverable: "提案書1枚＋営業文面3パターン＋事例投稿の下書き1本",
+      gate: "g2",
+      videos: [
+        { id: "13-1", title: "提案書・営業文面とSNS販路", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 14, badge: "L14", week: "W7", title: "ヒアリングと商談",
+      goal: "売り込まずに課題を聞く。業務フローの聞き方、相手の言葉を提案に使う。営業ロールプレイ",
+      deliverable: "質問リスト作成＋模擬商談1回",
+      gate: null,
+      videos: [
+        { id: "14-1", title: "ヒアリングと商談", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 15, badge: "L15", week: "W7", title: "見積・PoC・納品・継続提案",
+      goal: "小さく試す提案、価格、修正回数、納品チェック、保守・月額運用への導線",
+      deliverable: "PoC提案書＋見積案＋納品チェックリスト",
+      gate: null,
+      videos: [
+        { id: "15-1", title: "見積・PoC・納品・継続提案", min: 20, type: "concept", url: "" },
+      ],
+    },
+    {
+      id: 16, badge: "L16", week: "W8", title: "事例化・ポートフォリオ・実践期の歩き方",
+      goal: "Before/Afterの事例記事化とSNS・商品ページへの反映。実践期（3〜6ヶ月目）の90日行動計画",
+      deliverable: "事例ドラフト＋ポートフォリオ骨子＋90日行動計画",
+      gate: "g3",
+      videos: [
+        { id: "16-1", title: "事例化・ポートフォリオ・実践期の歩き方", min: 20, type: "concept", url: "" },
       ],
     },
   ],
 
-  /* ---------------- いつでも見れる動画（メイン講義以外の補助教材） ---------------- */
-  /* メイン講義の一本道とは別に、好きなタイミングで見られるトピック別動画。
-   * ここに追加すれば「動画レッスン」→「いつでも見れる動画」タブに表示されます。
-   * 例: { id: "extra-1", title: "Notionの基本操作", min: 6, url: "" },       */
-  extraVideos: [],
-
-  /* ---------------- 3ヶ月カレンダー（週次ライブ） ---------------- */
-  /* kind: oneonone=1on1 / group=グループセミナー / demo=成果発表会      */
-  /* offset: 開講日からの日数（直近の予定の日付を自動計算）              */
-  schedule: [
-    { week: "W1",  kind: "oneonone", offset: 0,  title: "1on1 オリエン / 目標設定",           theme: "Deal-First: ターゲット案件を仮確定", moduleId: 0 },
-    { week: "W2",  kind: "group",    offset: 7,  title: "グループ① ハンズオン (GPTs/Gem)",     theme: "カスタムAIを全員で作る",            moduleId: 2 },
-    { week: "W3",  kind: "oneonone", offset: 14, title: "1on1 n8nセットアップ",                theme: "環境構築の詰まりを解消",            moduleId: 3 },
-    { week: "W4",  kind: "group",    offset: 21, title: "グループ② 壊れたワークフロー診療所",  theme: "1人の詰まりを全員の学びに",          moduleId: 3 },
-    { week: "M1",  kind: "demo",     offset: 28, title: "成果発表会（ミニ）",                  theme: "ROI言語化の初回ピッチ",            moduleId: null },
-    { week: "W5",  kind: "group",    offset: 35, title: "グループ③ ハンズオン (AIノード連携)", theme: "本番ワークフローの骨子",            moduleId: 4 },
-    { week: "W6",  kind: "oneonone", offset: 42, title: "1on1 ワークフロー / Claude MCP",       theme: "本番要件と実装の詰まり",            moduleId: 4 },
-    { week: "W7",  kind: "group",    offset: 49, title: "グループ④ ROI営業ロールプレイ",       theme: "模擬商談 = 営業アクション駆動",      moduleId: 6 },
-    { week: "W8",  kind: "oneonone", offset: 56, title: "1on1 本番稼働",                       theme: "ゲート①の最終確認",                moduleId: 4 },
-    { week: "M2",  kind: "demo",     offset: 63, title: "成果発表会（本番）＋ゲスト/卒業生ライブ", theme: "本番システムをデモ",             moduleId: null },
-    { week: "W9",  kind: "group",    offset: 70, title: "グループ⑤ ハンズオン (案件獲得導線)",  theme: "無料提供→有償の導線",              moduleId: 6 },
-    { week: "W10", kind: "oneonone", offset: 77, title: "1on1 実践案件",                       theme: "提案書ドラフトのレビュー",          moduleId: 5 },
-    { week: "W11", kind: "group",    offset: 84, title: "グループ⑥ ROI営業ロールプレイ②",      theme: "クロージングの精度を上げる",        moduleId: 6 },
-    { week: "W12", kind: "oneonone", offset: 91, title: "1on1 成果確認 / 自走計画",            theme: "結果判定レビュー",                  moduleId: 7 },
-    { week: "M3",  kind: "demo",     offset: 98, title: "卒業成果発表会（最大）",              theme: "次期見込客も招待",                  moduleId: null },
+  /* ---------------- その他教材（AIツールの使い方解説・常時公開） ---------------- */
+  /* メイン講義（L01〜L16）とは別に、いつでも見られるツール別の解説教材。
+   * ここに追加すれば「動画レッスン」→「その他教材」タブにカテゴリ別で表示されます。
+   * 例: { id: "tool-xxx", title: "ツール名", cat: "カテゴリ名", required: true, min: 15, url: "" },       */
+  extraVideos: [
+    { id: "tool-chatgpt", title: "ChatGPT", cat: "LLM", required: true, min: 15, url: "" },
+    { id: "tool-claude", title: "Claude", cat: "LLM", required: true, min: 15, url: "" },
+    { id: "tool-gemini", title: "Gemini", cat: "LLM", required: true, min: 15, url: "" },
+    { id: "tool-claude-code", title: "Claude Code", cat: "AIコーディング", required: true, min: 15, url: "" },
+    { id: "tool-codex", title: "Codex", cat: "AIコーディング", required: true, min: 15, url: "" },
+    { id: "tool-git-github", title: "Git・GitHub", cat: "AIコーディング", required: false, min: 15, url: "" },
+    { id: "tool-cursor-vscode", title: "Cursor・VS Code", cat: "AIコーディング", required: false, min: 15, url: "" },
+    { id: "tool-n8n", title: "n8n", cat: "AI自動化", required: true, min: 15, url: "" },
+    { id: "tool-dify", title: "Dify", cat: "AI自動化", required: false, min: 15, url: "" },
+    { id: "tool-copilot", title: "Copilot", cat: "AIエージェント", required: true, min: 15, url: "" },
+    { id: "tool-genspark", title: "Genspark", cat: "AIエージェント", required: false, min: 15, url: "" },
+    { id: "tool-manus", title: "Manus", cat: "AIエージェント", required: false, min: 15, url: "" },
+    { id: "tool-notebooklm", title: "NotebookLM", cat: "AIクリエイティブ", required: true, min: 15, url: "" },
+    { id: "tool-higgsfield", title: "Higgsfield", cat: "AIクリエイティブ", required: true, min: 15, url: "" },
+    { id: "tool-midjourney", title: "Midjourney", cat: "AIクリエイティブ", required: false, min: 15, url: "" },
+    { id: "tool-suno", title: "Suno AI", cat: "AIクリエイティブ", required: false, min: 15, url: "" },
+    { id: "tool-typeless-aquavoice", title: "Typeless・AquaVoice", cat: "音声入力", required: true, min: 15, url: "" },
+    { id: "tool-notion", title: "Notion", cat: "情報管理", required: true, min: 15, url: "" },
   ],
 
   /* ---------------- 週ごとの「やること」（宿題） ---------------- */
   /* week: 0=開講前準備 / 1..12=各週。done状態はブラウザに保存されます  */
+  /* ★ id が "u" 始まりのものは、旧カリキュラムの同名ID（例: t1-1）と内容が
+   *   異なるため衝突を避けて採番し直したものです（旧IDのまま既存受講生の
+   *   完了フラグを引き継ぐと、無関係な新タスクが完了済み扱いになるため）。
+   *   t0-1 は旧カリキュラムと文言が同一なので、そのまま維持しています。   */
   tasks: [
-    { id: "t0-1", week: 0,  text: "公式LINEに参加し、自己紹介を投稿する" },
-    { id: "t0-2", week: 0,  text: "Module 0「着地点設計」の動画を視聴する" },
-    { id: "t1-1", week: 1,  text: "ターゲット案件シートを記入（誰の/どんな課題を/ROIいくら）" },
-    { id: "t1-2", week: 1,  text: "13ステップ進捗マップに現在地を記入する" },
-    { id: "t2-1", week: 2,  text: "業務棚卸し → 自動化候補リスト（ROI上位3件）を作る" },
-    { id: "t2-2", week: 2,  text: "GPTs/GemでカスタムAIを1つ作り、1分デモ台本を書く" },
-    { id: "t3-1", week: 3,  text: "n8n環境を構築し、最小ワークフローを1本動かす" },
-    { id: "t4-1", week: 4,  text: "詰まったワークフローを診療所(グループ②)に持ち込む" },
-    { id: "t4-2", week: 4,  text: "成果発表会(ミニ)用に1分ピッチを準備する" },
-    { id: "t5-1", week: 5,  text: "本番システムの要件定義書を書き始める" },
-    { id: "t6-1", week: 6,  text: "Claude MCP連携を実装し、本番ワークフローを構築" },
-    { id: "t7-1", week: 7,  text: "【営業アクション】無料提供先を1件リストアップしてアプローチ" },
-    { id: "t8-1", week: 8,  text: "【ゲート①】本番システムを稼働させ、運用手順書を完成" },
-    { id: "t9-1", week: 9,  text: "案件獲得導線を設計し、提案先を3件決める" },
-    { id: "t10-1", week: 10, text: "【ゲート②】ROI提案書を1本仕上げる" },
-    { id: "t11-1", week: 11, text: "【営業アクション】ROI提案を実際に提示する（ロープレ反映）" },
-    { id: "t12-1", week: 12, text: "【ゲート③】受注 or 月10万円相当の効果を確定し、自走計画シートを完成" },
+    { id: "t0-1", week: 0, text: "公式LINEに参加し、自己紹介を投稿する" },
+    { id: "u1-1", week: 1, text: "L01: Claude Codeをセットアップし、自己紹介.mdを作成する" },
+    { id: "u1-2", week: 1, text: "L02: 6ヶ月目標シート＋事業の現状シートを.mdで完成させる" },
+    { id: "t1-3", week: 1, text: "L03: 事業の課題を3つのLLMに投げて比較メモを作る" },
+    { id: "u2-1", week: 2, text: "L04: 目標シートv2（Claude Codeと壁打ちした更新版）を作る" },
+    { id: "u2-2", week: 2, text: "L05: 定型業務をSkill化して1つ動かす" },
+    { id: "u3-1", week: 3, text: "L06: 自分の事業にMCPを1つ繋いで動かす" },
+    { id: "t3-2", week: 3, text: "L07: 事業のLPまたは業務用ミニアプリを1つ作る" },
+    { id: "u4-1", week: 4, text: "L08: 業務棚卸しシート50件以上＋内製化テーマを決定する" },
+    { id: "u4-2", week: 4, text: "L09:【ゲート①】内製化成果物＋手順書＋ROIメモを完成する" },
+    { id: "u5-1", week: 5, text: "L10: 内製化実績をROI提案の型で1枚にまとめる" },
+    { id: "t5-2", week: 5, text: "L11: 代替提案サービス案3つ＋価格比較表を作る" },
+    { id: "u6-1", week: 6, text: "L12: 無料導入先の候補リスト10件を作る" },
+    { id: "t6-2", week: 6, text: "L13:【ゲート②】提案書1枚＋営業文面3パターンを完成する" },
+    { id: "u7-1", week: 7, text: "L14: 質問リストを作成し、模擬商談を1回行う" },
+    { id: "t7-2", week: 7, text: "L15: PoC提案書＋見積案＋納品チェックリストを作る" },
+    { id: "u8-1", week: 8, text: "L16:【ゲート③】事例ドラフト＋ポートフォリオ骨子＋90日行動計画を完成する" },
+    { id: "u9-1", week: 9, text: "無料導入を1件開始し、業務ログを取る" },
+    { id: "u10-1", week: 10, text: "導入効果（削減時間・Before/After）を測定して記録する" },
+    { id: "u11-1", week: 11, text: "効果実績をもとに有償化・継続提案を提示する" },
+    { id: "u12-1", week: 12, text: "受注事例をSNS・ポートフォリオに反映する" },
   ],
 
   /* 毎日のルーティン（チェックは日付ごとに保存） */

@@ -93,7 +93,7 @@
   const nextVideo = () => { for (const v of allVideos()) if (!isWatched(v.id)) return v; return null; };
 
   const startDate = () => parse(student.start_date);
-  const currentWeek = () => Math.min(12, Math.max(1, Math.floor(diffDays(TODAY, startDate()) / 7) + 1));
+  const currentWeek = () => Math.min(24, Math.max(1, Math.floor(diffDays(TODAY, startDate()) / 7) + 1));
   const weekTasksOf = (w) => D.tasks.filter((t) => t.week === w);
   const openTaskCount = () => weekTasksOf(currentWeek()).filter((t) => !progress.tasks[t.id]).length;
 
@@ -106,11 +106,11 @@
   };
 
   const JOURNEY = [
-    { label: "着地点・基礎", mods: [0, 1, 2, 3] },
-    { label: "ゲート① 本番システム", mods: [4] },
-    { label: "ゲート② ROI提案", mods: [5] },
-    { label: "ゲート③ 受注", mods: [6] },
-    { label: "自走・卒業", mods: [7] },
+    { label: "セットアップ・AI基礎", mods: [101, 102, 103] },
+    { label: "Claude Code習得", mods: [104, 105, 106, 107] },
+    { label: "内製化完成", mods: [8, 9] },
+    { label: "営業・商品化", mods: [10, 11, 12, 13] },
+    { label: "受注・事例化", mods: [14, 15, 16] },
   ];
   const stepDone = (s) => s.mods.every((id) => moduleStat(moduleById(id)).complete);
 
@@ -151,7 +151,7 @@
         <div class="meta">
           <span class="pill">${esc(student.plan)}</span>
           <span class="pill">${esc(student.cohort)}</span>
-          <span class="pill">Week ${cw} / 12</span>
+          <span class="pill">Week ${cw}</span>
         </div>
       </div>
       <div class="hbox"><div class="lbl">全体の進捗</div><div class="num">${o.pct}<small>%</small></div><div class="dt">${o.done} / ${o.total} 本 視聴</div></div>
@@ -271,8 +271,8 @@
       }).join("");
       return `<div class="${cls}">
         <div class="mhead" data-toggle-module="${m.id}">
-          <div class="mnum">${st.complete ? icon("check") : m.id}</div>
-          <div class="minfo"><div class="mt">${esc(m.title)} ${m.gate ? `<span class="pill orange">${D.gates.find((g) => g.id === m.gate).label}</span>` : ""}</div><div class="mg">${esc(m.goal)}</div></div>
+          <div class="mnum">${st.complete ? icon("check") : (Number(String(m.badge || "").replace(/\D/g, "")) || m.id)}</div>
+          <div class="minfo"><div class="mt">${esc(m.title)} ${m.week ? `<span class="pill gray">${esc(m.week)}</span>` : ""} ${m.gate ? `<span class="pill orange">${D.gates.find((g) => g.id === m.gate).label}</span>` : ""}</div><div class="mg">${esc(m.goal)}</div></div>
           <div class="mright"><div class="mbarwrap"><div class="mbar"><i style="width:${st.pct}%"></i></div><div class="mfrac">${st.done}/${st.total} 本</div></div>${icon("chevron", "caret icn")}</div>
         </div>
         <div class="mbody">
@@ -286,32 +286,36 @@
       ${mods}`;
   }
 
+  const TOOL_CATS = ["LLM", "AIコーディング", "AI自動化", "AIエージェント", "AIクリエイティブ", "音声入力", "情報管理"];
   function renderExtraVideos() {
     const list = D.extraVideos || [];
     if (!list.length) {
       return `<div class="card"><div class="empty">準備中です。メイン講義以外に、いつでも見られる補助動画をここに追加していく予定です。</div></div>`;
     }
-    const rows = list.map((v) => {
-      const w = isWatched(v.id);
-      return `<div class="vid ${w ? "watched" : ""}">
-        <div class="vcbox" data-watch="${v.id}" title="視聴済みにする">${icon("check", "icn-sm")}</div>
-        <div class="vmain" data-open-video="${v.id}">
-          <div class="vplay">${icon(w ? "check" : "play", "icn-sm")}</div>
-          <div><div class="vt">${esc(v.title)}</div><div class="vm">${v.min ? v.min + "分" : ""}${v.url ? "" : "・<span>準備中</span>"}</div></div>
-        </div>
-        <span class="pill ${w ? "green" : "gray"}">${w ? "視聴済" : "未視聴"}</span></div>`;
+    const cats = TOOL_CATS.filter((c) => list.some((v) => v.cat === c));
+    return cats.map((cat) => {
+      const rows = list.filter((v) => v.cat === cat).map((v) => {
+        const w = isWatched(v.id);
+        return `<div class="vid ${w ? "watched" : ""}">
+          <div class="vcbox" data-watch="${v.id}" title="視聴済みにする">${icon("check", "icn-sm")}</div>
+          <div class="vmain" data-open-video="${v.id}">
+            <div class="vplay">${icon(w ? "check" : "play", "icn-sm")}</div>
+            <div><div class="vt">${esc(v.title)} <span class="pill ${v.required ? "orange" : "gray"}">${v.required ? "必修" : "選択"}</span></div><div class="vm">${v.min ? v.min + "分" : ""}${v.url ? "" : "・<span>準備中</span>"}</div></div>
+          </div>
+          <span class="pill ${w ? "green" : "gray"}">${w ? "視聴済" : "未視聴"}</span></div>`;
+      }).join("");
+      return `<div class="sec-title"><h3>${esc(cat)}</h3></div><div class="card"><div class="tasklist">${rows}</div></div>`;
     }).join("");
-    return `<div class="card"><div class="tasklist">${rows}</div></div>`;
   }
 
   function renderCurriculum() {
     const o = overall();
     const tabs = `<div class="curtabs">
       <button class="curtab ${curTab === "main" ? "active" : ""}" data-curtab="main">
-        ${icon("map", "icn")}<div><div class="ct-t">メイン講義</div><div class="ct-d">一本道カリキュラム（8モジュール → 3ゲート）</div></div>
+        ${icon("map", "icn")}<div><div class="ct-t">メイン講義</div><div class="ct-d">L01〜L16（2ヶ月講義＋4ヶ月実践）</div></div>
       </button>
       <button class="curtab ${curTab === "extra" ? "active" : ""}" data-curtab="extra">
-        ${icon("video", "icn")}<div><div class="ct-t">いつでも見れる動画</div><div class="ct-d">メイン講義以外の補助教材</div></div>
+        ${icon("video", "icn")}<div><div class="ct-t">その他教材</div><div class="ct-d">AIツールの使い方解説（常時公開・随時追加）</div></div>
       </button>
     </div>`;
     return `<div class="card curhead">
@@ -424,7 +428,7 @@
       <div class="card lesson-head" style="margin-top:10px">
         ${m ? `<div class="lesson-badge">${esc(m.badge)}</div>` : ""}
         <h2 class="lesson-title">${esc(v.title)}</h2>
-        <div class="lesson-meta">${v.type ? `<span class="vtype ${v.type}">${typeLabel[v.type]}</span>` : ""} ${v.min ? v.min + "分" : ""}</div>
+        <div class="lesson-meta">${v.type ? `<span class="vtype ${v.type}">${typeLabel[v.type]}</span>` : ""} ${v.min ? v.min + "分" : ""} ${m && m.week ? `<span class="pill gray">${esc(m.week)}</span>` : ""}</div>
       </div>
       ${player}
       <div class="card" style="margin-top:14px">
@@ -436,9 +440,9 @@
 
   /* ================= ロードマップ ================= */
   const ROADMAP_PHASES = [
-    { label: "1ヶ月目", sub: "内製化", mods: [0, 1, 2, 3] },
-    { label: "2ヶ月目", sub: "営業・導入", mods: [4, 5, 6] },
-    { label: "自走フェーズ", sub: "継続運用", mods: [7] },
+    { label: "1ヶ月目", sub: "内製化", mods: [101, 102, 103, 104, 105, 106, 107, 8, 9] },
+    { label: "2ヶ月目", sub: "営業・商品化", mods: [10, 11, 12, 13, 14, 15, 16] },
+    { label: "3〜6ヶ月目", sub: "実践・実績化", mods: [] },
   ];
   function phaseStat(p) {
     const mods = p.mods.map(moduleById).filter(Boolean);
@@ -449,6 +453,12 @@
   function renderRoadmap() {
     const o = overall();
     const cards = ROADMAP_PHASES.map((p) => {
+      if (!p.mods.length) {
+        return `<div class="road-card card">
+          <div class="road-top"><div><div class="road-label">${esc(p.label)}</div><div class="road-sub">${esc(p.sub)}</div></div></div>
+          <div class="note" style="margin-top:8px">新規講義なし。セミナー・週次面談・営業ロールプレイ・実案件に集中する期間です。</div>
+        </div>`;
+      }
       const st = phaseStat(p);
       const deliverables = p.mods.map(moduleById).filter(Boolean).map((m) => `<li><b>${esc(m.badge)}</b> ${esc(m.deliverable)}</li>`).join("");
       return `<div class="road-card card">
@@ -459,13 +469,13 @@
       </div>`;
     }).join("");
     return `<div class="card road-head">
-        <div><div class="t">3ヶ月ロードマップ</div><div class="note">1ヶ月目は内製化、2ヶ月目は営業・導入、自走フェーズで継続運用へ進みます。</div></div>
-        <div class="road-now"><b>現在地</b><span>Week ${currentWeek()} / 12</span></div>
+        <div><div class="t">ロードマップ</div><div class="note">1ヶ月目は内製化、2ヶ月目は営業・商品化、3〜6ヶ月目は実践・実績化へ進みます。</div></div>
+        <div class="road-now"><b>現在地</b><span>Week ${currentWeek()}</span></div>
       </div>
       <div class="road-track card">
         <div class="road-line"><i style="width:${o.pct}%"></i></div>
         <div class="road-avatar" style="left:${Math.min(100, Math.max(0, o.pct))}%">${icon("user", "icn-sm")}</div>
-        <div class="road-marks"><span>開始</span><span>1ヶ月目</span><span>2ヶ月目</span><span>自走</span></div>
+        <div class="road-marks"><span>開始</span><span>1ヶ月目</span><span>2ヶ月目</span><span>実践期</span></div>
       </div>
       <div class="road-grid">${cards}</div>`;
   }
