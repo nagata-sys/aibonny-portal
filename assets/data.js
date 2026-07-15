@@ -199,9 +199,9 @@ const AIBONNY = {
     },
   ],
 
-  /* ---------------- その他教材（AIツールの使い方解説・常時公開） ---------------- */
+  /* ---------------- AIツール（AIツールの使い方解説・常時公開） ---------------- */
   /* メイン講義（L01〜L16）とは別に、いつでも見られるツール別の解説教材。
-   * ここに追加すれば「動画レッスン」→「その他教材」タブにカテゴリ別で表示されます。
+   * ここに追加すれば「動画レッスン」→「AIツール」タブにカテゴリ別で表示されます。
    * 例: { id: "tool-xxx", title: "ツール名", cat: "カテゴリ名", required: true, min: 15, url: "" },       */
   extraVideos: [
     { id: "tool-chatgpt", title: "ChatGPT", cat: "LLM", required: true, min: 15, url: "" },
@@ -223,6 +223,11 @@ const AIBONNY = {
     { id: "tool-typeless-aquavoice", title: "Typeless・AquaVoice", cat: "音声入力", required: true, min: 15, url: "" },
     { id: "tool-notion", title: "Notion", cat: "情報管理", required: true, min: 15, url: "" },
   ],
+
+  /* ---------------- 過去セミナーアーカイブ（開催済みセミナーの録画） ---------------- */
+  /* ここに追加すれば「動画レッスン」→「過去セミナーアーカイブ」タブに一覧表示されます。
+   * 例: { id: "sem-20260801", title: "セミナータイトル", date: "2026-08-01", min: 60, url: "" },       */
+  seminarArchive: [],
 
   /* ---------------- 週ごとの「やること」（宿題） ---------------- */
   /* week: 0=開講前準備 / 1..12=各週。done状態はブラウザに保存されます  */
@@ -269,12 +274,8 @@ const AIBONNY = {
 
   /* ---------------- テンプレ / リソース棚 ---------------- */
   templates: [
-    { icon: "target",     title: "ターゲット案件シート", desc: "誰の課題をROIいくらで解くか", link: "" },
-    { icon: "map",        title: "13ステップ進捗マップ", desc: "一本道の現在地を可視化", link: "" },
-    { icon: "cpu",        title: "プロンプト集", desc: "そのまま使える業務プロンプト", link: "" },
     { icon: "file",       title: "提案書テンプレート", desc: "ROIで語る提案の型", link: "" },
     { icon: "calculator", title: "ROI試算シート", desc: "効果額を数字で示す", link: "" },
-    { icon: "book",       title: "運用手順書テンプレ", desc: "そのまま納品ドキュメントに", link: "" },
     { icon: "rocket",     title: "自走計画シート", desc: "2件目以降を自力で回す", link: "" },
   ],
 

@@ -185,7 +185,7 @@
           <span class="pill">Week ${cw}</span>
         </div>
       </div>
-      <div class="hbox"><div class="lbl">全体の進捗</div><div class="num">${o.pct}<small>%</small></div><div class="dt">${o.done} / ${o.total} 本 視聴</div></div>
+      <div class="hbox"><div class="lbl">動画進捗</div><div class="num">${o.pct}<small>%</small></div><div class="dt">${o.done} / ${o.total} 本 視聴</div></div>
     </div>`;
 
     let firstOpen = JOURNEY.findIndex((s) => !stepDone(s));
@@ -339,6 +339,24 @@
     }).join("");
   }
 
+  function renderSeminarArchive() {
+    const list = D.seminarArchive || [];
+    if (!list.length) {
+      return `<div class="card"><div class="empty">準備中です。開催済みセミナーの録画をここに追加していきます。</div></div>`;
+    }
+    const rows = list.map((v) => {
+      const w = isWatched(v.id);
+      return `<div class="vid ${w ? "watched" : ""}">
+        <div class="vcbox" data-watch="${v.id}" title="視聴済みにする">${icon("check", "icn-sm")}</div>
+        <div class="vmain" data-open-video="${v.id}">
+          <div class="vplay">${icon(w ? "check" : "play", "icn-sm")}</div>
+          <div><div class="vt">${esc(v.title)}</div><div class="vm">${v.date ? esc(v.date) + "・" : ""}${v.min ? v.min + "分" : ""}${v.url ? "" : "・<span>準備中</span>"}</div></div>
+        </div>
+        <span class="pill ${w ? "green" : "gray"}">${w ? "視聴済" : "未視聴"}</span></div>`;
+    }).join("");
+    return `<div class="card"><div class="tasklist">${rows}</div></div>`;
+  }
+
   function renderCurriculum() {
     const o = overall();
     const tabs = `<div class="curtabs">
@@ -346,15 +364,19 @@
         ${icon("map", "icn")}<div><div class="ct-t">メイン講義</div><div class="ct-d">L01〜L16（2ヶ月講義＋4ヶ月実践）</div></div>
       </button>
       <button class="curtab ${curTab === "extra" ? "active" : ""}" data-curtab="extra">
-        ${icon("video", "icn")}<div><div class="ct-t">その他教材</div><div class="ct-d">AIツールの使い方解説（常時公開・随時追加）</div></div>
+        ${icon("video", "icn")}<div><div class="ct-t">AIツール</div><div class="ct-d">AIツールの使い方解説（常時公開・随時追加）</div></div>
+      </button>
+      <button class="curtab ${curTab === "archive" ? "active" : ""}" data-curtab="archive">
+        ${icon("clock", "icn")}<div><div class="ct-t">過去セミナーアーカイブ</div><div class="ct-d">開催済みセミナーの録画（随時追加）</div></div>
       </button>
     </div>`;
+    const body = curTab === "main" ? renderMainCurriculum() : curTab === "extra" ? renderExtraVideos() : renderSeminarArchive();
     return `<div class="card curhead">
         <div class="ci"><div class="t">動画レッスン</div><div class="note" style="margin-top:4px">受けたい講義を選んでください。迷ったら「メイン講義」の「次の1本」だけ進めればOKです。</div></div>
         <div class="cp"><div class="big">${o.pct}%</div><div class="note">${o.done} / ${o.total} 本 視聴済み</div></div>
       </div>
       ${tabs}
-      ${curTab === "main" ? renderMainCurriculum() : renderExtraVideos()}`;
+      ${body}`;
   }
 
   /* ---------------- レッスンページ（1動画＝1ページ） ---------------- */
@@ -366,6 +388,8 @@
     }
     const extra = (D.extraVideos || []).find((v) => v.id === id);
     if (extra) return { video: extra, prev: null, next: null, module: null };
+    const arc = (D.seminarArchive || []).find((v) => v.id === id);
+    if (arc) return { video: arc, prev: null, next: null, module: null };
     return null;
   }
 
