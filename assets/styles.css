@@ -264,8 +264,6 @@ svg { display: block; }
 .res .rd { font-size: 12px; color: var(--muted); }
 .res .arrow { margin-left: auto; color: var(--faint); }
 .rgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 13px; }
-.rescue { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.rescue .res { flex-direction: column; align-items: flex-start; }
 
 /* ============ カリキュラム ============ */
 .curhead { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -274,12 +272,22 @@ svg { display: block; }
 .curhead .cp { text-align: right; }
 .curhead .cp .big { font-size: 28px; font-weight: 800; color: var(--green); line-height: 1; }
 
-.curtabs { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-.curtab { flex: 1 1 220px; display: flex; align-items: center; gap: 12px; padding: 15px 17px; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); box-shadow: var(--shadow-sm); cursor: pointer; text-align: left; color: var(--text); }
-.curtab .icn { color: var(--green); flex: 0 0 auto; }
-.curtab .ct-t { font-weight: 800; font-size: 14px; }
-.curtab .ct-d { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.curtab.active { border-color: var(--green); background: var(--green-tint); box-shadow: var(--shadow); }
+.curselect { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 18px; }
+.curselect-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 26px 22px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); box-shadow: var(--shadow-sm); cursor: pointer; text-align: left; color: var(--text);
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.curselect-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--green); }
+.curselect-card .csc-icon { width: 52px; height: 52px; border-radius: 14px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; }
+.curselect-card .csc-icon .icn { width: 26px; height: 26px; }
+.curselect-card .csc-title { font-weight: 800; font-size: 17px; }
+.curselect-card .csc-desc { font-size: 13px; color: var(--muted); }
+.curselect-card .csc-count { margin-top: auto; font-size: 12.5px; font-weight: 800; color: var(--green-d); background: var(--green-tint); padding: 4px 12px; border-radius: 99px; }
+
+.curtab-head { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+.curtab-head-title { margin: 0; font-size: 16px; font-weight: 800; }
 
 /* ============ レッスンページ ============ */
 .lesson-head { margin-bottom: 0; }
@@ -378,6 +386,14 @@ svg { display: block; }
 
 .linkrow { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
 
+/* ============ Next Action（次回面談までのやること） ============ */
+.na-add-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.na-add-row input {
+  flex: 1 1 220px; border: 1px solid var(--line); border-radius: var(--radius-s);
+  padding: 9px 12px; font-family: inherit; font-size: 13px; background: #fff; color: var(--text);
+}
+.na-add-row input:focus { outline: 2px solid var(--green-soft); border-color: var(--green); }
+
 /* ============ 動画レッスン統合UI ============ */
 
 .submit-box { background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--radius-m); padding: 14px; }
@@ -396,31 +412,6 @@ svg { display: block; }
 .sub-main { flex: 1 1 auto; min-width: 0; }
 .sub-title { font-weight: 800; font-size: 13.5px; }
 .sub-meta { font-size: 11.5px; color: var(--muted); }
-
-/* ============ ロードマップ ============ */
-.road-head { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 18px; }
-.road-head .t { font-weight: 800; font-size: 16px; }
-.road-now { text-align: right; font-size: 12px; color: var(--muted); }
-.road-now b { display: block; color: var(--green-d); font-size: 14px; }
-.road-track { position: relative; margin-bottom: 18px; padding: 28px 22px 18px; }
-.road-line { position: relative; height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
-.road-line > i { display: block; height: 100%; background: linear-gradient(90deg, #27b6e0, var(--green)); border-radius: 99px; }
-.road-avatar {
-  position: absolute; top: 17px; transform: translateX(-50%);
-  width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: #fff;
-  display: grid; place-items: center; box-shadow: 0 0 0 5px var(--orange-soft);
-}
-.road-marks { display: flex; justify-content: space-between; margin-top: 12px; font-size: 11.5px; color: var(--muted); font-weight: 700; }
-.road-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.road-card { padding: 18px; }
-.road-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
-.road-label { font-size: 15px; font-weight: 800; }
-.road-sub { font-size: 12px; color: var(--muted); }
-.road-bar { height: 7px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-top: 14px; }
-.road-bar > i { display: block; height: 100%; background: var(--green); }
-.road-pct { font-size: 22px; font-weight: 800; color: var(--green); margin-top: 8px; }
-.road-list { margin: 10px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
-.road-list li + li { margin-top: 6px; }
 
 /* ============ 週報 / グラフ / アカウント ============ */
 .chart-card canvas { max-height: 240px; }
@@ -448,10 +439,9 @@ svg { display: block; }
   .hamburger { display: flex; }
   .content { width: 100%; }
   .row2, .row2.even { grid-template-columns: 1fr; }
-  .rgrid, .rescue { grid-template-columns: 1fr; }
-  .curtabs { flex-direction: column; }
+  .rgrid { grid-template-columns: 1fr; }
+  .curselect { grid-template-columns: 1fr; }
   .dash-grid { grid-template-columns: 1fr; }
-  .road-grid { grid-template-columns: 1fr; }
   .sub-form { grid-template-columns: 1fr; }
   .sub-form textarea { grid-column: auto; }
   .qgrid { grid-template-columns: repeat(2, 1fr); }
