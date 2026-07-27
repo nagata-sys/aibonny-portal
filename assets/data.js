@@ -64,7 +64,7 @@ const AIBONNY = {
       deliverable: "Claude Codeをセットアップし、最初の対話で自己紹介.mdを作成する",
       gate: null,
       videos: [
-        { id: "101-1", title: "Claude Codeの初期セットアップ（インストールと基本操作）", min: 20, type: "hands", url: "" },
+        { id: "101-1", title: "Claude Codeの初期セットアップ（インストールと基本操作）", min: 20, type: "hands", url: "https://www.youtube.com/embed/Y7ZGLz2XgsU" },
       ],
     },
     {
